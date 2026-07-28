@@ -3,89 +3,34 @@ import { Pool } from 'pg';
 let pool: Pool | null = null;
 
 export function initDb() {
+  if (!process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
+    throw new Error('DATABASE_URL environment variable is required in production');
+  }
+
   if (process.env.DATABASE_URL) {
-    // Production: Use PostgreSQL
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     });
   }
 }
 
-export function isPostgres() {
-  return !!process.env.DATABASE_URL;
-}
-
 export function query(sql: string, params: any[] = []): Promise<any> {
-  if (isPostgres() && pool) {
-    return pool.query(sql, params).then(res => res.rows);
-  } else {
-    // Development: Use SQLite
-    return new Promise((resolve, reject) => {
-      // Only import sqlite3 in development
-      const sqlite3 = require('sqlite3');
-      const db = new sqlite3.Database('./prisma/dev.db');
-
-      // Convert PostgreSQL-style $1, $2 to SQLite ?
-      let sqliteSQL = sql;
-      for (let i = params.length; i > 0; i--) {
-        sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
-      }
-
-      db.all(sqliteSQL, params, (err: Error | null, rows: any[]) => {
-        db.close();
-        if (err) reject(err);
-        else resolve(rows || []);
-      });
-    });
+  if (!pool) {
+    throw new Error('Database not initialized. Call initDb() first or set DATABASE_URL');
   }
+  return pool.query(sql, params).then(res => res.rows);
 }
 
 export function queryOne(sql: string, params: any[] = []): Promise<any> {
-  if (isPostgres() && pool) {
-    return pool.query(sql, params).then(res => res.rows[0]);
-  } else {
-    // Development: Use SQLite
-    return new Promise((resolve, reject) => {
-      // Only import sqlite3 in development
-      const sqlite3 = require('sqlite3');
-      const db = new sqlite3.Database('./prisma/dev.db');
-
-      // Convert PostgreSQL-style $1, $2 to SQLite ?
-      let sqliteSQL = sql;
-      for (let i = params.length; i > 0; i--) {
-        sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
-      }
-
-      db.get(sqliteSQL, params, (err: Error | null, row: any) => {
-        db.close();
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+  if (!pool) {
+    throw new Error('Database not initialized. Call initDb() first or set DATABASE_URL');
   }
+  return pool.query(sql, params).then(res => res.rows[0]);
 }
 
 export function run(sql: string, params: any[] = []): Promise<any> {
-  if (isPostgres() && pool) {
-    return pool.query(sql, params);
-  } else {
-    // Development: Use SQLite
-    return new Promise((resolve, reject) => {
-      // Only import sqlite3 in development
-      const sqlite3 = require('sqlite3');
-      const db = new sqlite3.Database('./prisma/dev.db');
-
-      // Convert PostgreSQL-style $1, $2 to SQLite ?
-      let sqliteSQL = sql;
-      for (let i = params.length; i > 0; i--) {
-        sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
-      }
-
-      db.run(sqliteSQL, params, function(this: any, err: Error | null) {
-        db.close();
-        if (err) reject(err);
-        else resolve({ lastID: this.lastID, changes: this.changes });
-      });
-    });
+  if (!pool) {
+    throw new Error('Database not initialized. Call initDb() first or set DATABASE_URL');
   }
+  return pool.query(sql, params);
 }
