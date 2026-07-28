@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, run } from '@/lib/db';
 
-export async function POST(request: NextRequest) {
+async function seedDatabase() {
   try {
     console.log('🌱 Starting database seed...');
 
@@ -101,12 +101,35 @@ export async function POST(request: NextRequest) {
     `);
 
     console.log('✅ Database seeding completed successfully!');
-    return NextResponse.json({
+    return {
       success: true,
       message: 'Database seeded with sample data'
-    });
+    };
   } catch (error) {
     console.error('❌ Seeding error:', error);
+    throw error;
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const result = await seedDatabase();
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('❌ GET /api/seed error:', error);
+    return NextResponse.json(
+      { error: 'Failed to seed database', details: String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const result = await seedDatabase();
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('❌ POST /api/seed error:', error);
     return NextResponse.json(
       { error: 'Failed to seed database', details: String(error) },
       { status: 500 }
