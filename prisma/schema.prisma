@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
+  role  String @default("rep") // admin or rep
+
+  leadsOwned  Lead[]
+  notes       Note[]
+  ownedEmails Email[] @relation("author")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Stage {
+  id    String @id @default(cuid())
+  name  String
+  order Int
+  color String @default("#7B4397")
+
+  leads Lead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lead {
+  id          String @id @default(cuid())
+  leadId      String @unique // human-readable e.g. "LD-10234"
+  name        String
+  email       String?
+  phone       String?
+  company     String?
+
+  stageId     String
+  stage       Stage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  source      String? // e.g. google_ads, linkedin, referral, website_organic, facebook_ads
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmTerm     String?
+  utmContent  String?
+
+  ownerId     String
+  owner       User @relation(fields: [ownerId], references: [id])
+
+  customFields String @default("{}")
+  dealValue   Float? @default(0)
+
+  notes       Note[]
+  emails      Email[]
+  calls       CallLog[]
+  activities  Activity[]
+  paymentLinks PaymentLink[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stageId])
+  @@index([ownerId])
+  @@index([source])
+}
+
+model CustomField {
+  id      String @id @default(cuid())
+  name    String @unique
+  type    String // text, number, dropdown, date
+  options String? // for dropdown type (JSON string)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Note {
+  id        String @id @default(cuid())
+  leadId    String
+  lead      Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  authorId  String
+  author    User @relation(fields: [authorId], references: [id])
+
+  content   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([authorId])
+}
+
+model Email {
+  id        String @id @default(cuid())
+  leadId    String
+  lead      Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  authorId  String?
+  author    User? @relation("author", fields: [authorId], references: [id])
+
+  direction String // sent or received
+  subject   String
+  body      String
+
+  sentAt    DateTime?
+  openedAt  DateTime?
+  clickedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([authorId])
+}
+
+model CallLog {
+  id        String @id @default(cuid())
+  leadId    String
+  lead      Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  notes     String?
+  duration  Int? // in seconds
+  callTime  DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model Activity {
+  id          String @id @default(cuid())
+  leadId      String
+  lead        Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  type        String // stage_change, note, email, call, meeting
+  description String
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([createdAt])
+}
+
+model PaymentLink {
+  id        String @id @default(cuid())
+  leadId    String
+  lead      Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  amount    Float
+  status    String @default("pending") // pending, paid
+  url       String // mock URL like /payment/[id]
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
