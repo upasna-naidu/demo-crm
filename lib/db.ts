@@ -31,7 +31,7 @@ export function query(sql: string, params: any[] = []): Promise<any> {
         sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
       }
 
-      db.all(sqliteSQL, params, (err, rows) => {
+      db.all(sqliteSQL, params, (err: Error | null, rows: any[]) => {
         db.close();
         if (err) reject(err);
         else resolve(rows || []);
@@ -56,7 +56,7 @@ export function queryOne(sql: string, params: any[] = []): Promise<any> {
         sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
       }
 
-      db.get(sqliteSQL, params, (err, row) => {
+      db.get(sqliteSQL, params, (err: Error | null, row: any) => {
         db.close();
         if (err) reject(err);
         else resolve(row);
@@ -81,7 +81,7 @@ export function run(sql: string, params: any[] = []): Promise<any> {
         sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
       }
 
-      db.run(sqliteSQL, params, function(err) {
+      db.run(sqliteSQL, params, function(err: Error | null) {
         db.close();
         if (err) reject(err);
         else resolve({ lastID: this.lastID, changes: this.changes });
