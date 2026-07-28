@@ -81,7 +81,7 @@ export function run(sql: string, params: any[] = []): Promise<any> {
         sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
       }
 
-      db.run(sqliteSQL, params, function(err: Error | null) {
+      db.run(sqliteSQL, params, function(this: any, err: Error | null) {
         db.close();
         if (err) reject(err);
         else resolve({ lastID: this.lastID, changes: this.changes });
