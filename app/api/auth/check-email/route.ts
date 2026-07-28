@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sqlite3 from 'sqlite3';
-
-function queryOne(sql: string, params: any[] = []): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database('./prisma/dev.db');
-    db.get(sql, params, (err, row) => {
-      db.close();
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-}
+import { queryOne } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await queryOne(
-      `SELECT id, name, email, role FROM User WHERE email = ?`,
+      `SELECT id, name, email, role FROM "User" WHERE email = $1`,
       [email]
     );
 
