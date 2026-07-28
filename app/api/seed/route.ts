@@ -5,20 +5,34 @@ async function seedDatabase() {
   try {
     console.log('🌱 Starting database seed...');
 
-    // Clear existing data
+    // Clear existing data - ignore errors if tables don't exist
     console.log('🗑️  Clearing existing data...');
     try {
       await run(`DELETE FROM "PaymentLink"`);
+    } catch (e) {}
+    try {
       await run(`DELETE FROM "Activity"`);
+    } catch (e) {}
+    try {
       await run(`DELETE FROM "CallLog"`);
+    } catch (e) {}
+    try {
       await run(`DELETE FROM "Email"`);
+    } catch (e) {}
+    try {
       await run(`DELETE FROM "Note"`);
+    } catch (e) {}
+    try {
       await run(`DELETE FROM "Lead"`);
+    } catch (e) {}
+    try {
       await run(`DELETE FROM "User"`);
+    } catch (e) {}
+    try {
       await run(`DELETE FROM "Stage"`);
-    } catch (e) {
-      console.log('Note: Some tables might not exist yet');
-    }
+    } catch (e) {}
+
+    console.log('✅ Data cleared')
 
     // Insert users
     console.log('👥 Adding users...');
