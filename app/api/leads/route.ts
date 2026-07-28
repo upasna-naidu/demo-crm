@@ -1,27 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sqlite3 from 'sqlite3';
-
-function queryDB(sql: string, params: any[] = []): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database('./prisma/dev.db');
-    db.all(sql, params, (err, rows) => {
-      db.close();
-      if (err) reject(err);
-      else resolve(rows || []);
-    });
-  });
-}
-
-function queryOne(sql: string, params: any[] = []): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database('./prisma/dev.db');
-    db.get(sql, params, (err, row) => {
-      db.close();
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-}
+import { query, queryOne } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,16 +9,16 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     const [leadsData, countData] = await Promise.all([
-      queryDB(
+      query(
         `SELECT l.*, s.name as stageName, u.name as ownerName
-         FROM Lead l
-         LEFT JOIN Stage s ON l.stageId = s.id
-         LEFT JOIN User u ON l.ownerId = u.id
-         ORDER BY l.createdAt DESC
-         LIMIT ? OFFSET ?`,
+         FROM "Lead" l
+         LEFT JOIN "Stage" s ON l."stageId" = s.id
+         LEFT JOIN "User" u ON l."ownerId" = u.id
+         ORDER BY l."createdAt" DESC
+         LIMIT $1 OFFSET $2`,
         [limit, offset]
       ),
-      queryOne('SELECT COUNT(*) as total FROM Lead'),
+      queryOne('SELECT COUNT(*) as total FROM "Lead"'),
     ]);
 
     const leads = leadsData.map((l: any) => ({

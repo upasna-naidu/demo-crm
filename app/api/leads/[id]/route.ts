@@ -1,27 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sqlite3 from 'sqlite3';
-
-function queryOne(sql: string, params: any[] = []): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database('./prisma/dev.db');
-    db.get(sql, params, (err, row) => {
-      db.close();
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-}
-
-function queryDB(sql: string, params: any[] = []): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database('./prisma/dev.db');
-    db.all(sql, params, (err, rows) => {
-      db.close();
-      if (err) reject(err);
-      else resolve(rows || []);
-    });
-  });
-}
+import { queryOne, query } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
@@ -32,7 +10,7 @@ export async function GET(
 
     // Fetch lead
     const lead = await queryOne(
-      `SELECT * FROM Lead WHERE id = ?`,
+      `SELECT * FROM "Lead" WHERE id = $1`,
       [leadId]
     );
 
@@ -45,37 +23,37 @@ export async function GET(
 
     // Fetch stage
     const stage = lead.stageId
-      ? await queryOne(`SELECT * FROM Stage WHERE id = ?`, [lead.stageId])
+      ? await queryOne(`SELECT * FROM "Stage" WHERE id = $1`, [lead.stageId])
       : null;
 
     // Fetch owner
     const owner = lead.ownerId
-      ? await queryOne(`SELECT * FROM User WHERE id = ?`, [lead.ownerId])
+      ? await queryOne(`SELECT * FROM "User" WHERE id = $1`, [lead.ownerId])
       : null;
 
     // Fetch related data
     const [notes, emails, calls, activities, paymentLinks] = await Promise.all([
-      queryDB(
-        `SELECT n.*, u.name as authorName FROM Note n
-         LEFT JOIN User u ON n.authorId = u.id
-         WHERE n.leadId = ?
-         ORDER BY n.createdAt DESC`,
+      query(
+        `SELECT n.*, u.name as "authorName" FROM "Note" n
+         LEFT JOIN "User" u ON n."authorId" = u.id
+         WHERE n."leadId" = $1
+         ORDER BY n."createdAt" DESC`,
         [leadId]
       ),
-      queryDB(
-        `SELECT * FROM Email WHERE leadId = ? ORDER BY createdAt DESC`,
+      query(
+        `SELECT * FROM "Email" WHERE "leadId" = $1 ORDER BY "createdAt" DESC`,
         [leadId]
       ),
-      queryDB(
-        `SELECT * FROM CallLog WHERE leadId = ? ORDER BY createdAt DESC`,
+      query(
+        `SELECT * FROM "CallLog" WHERE "leadId" = $1 ORDER BY "createdAt" DESC`,
         [leadId]
       ),
-      queryDB(
-        `SELECT * FROM Activity WHERE leadId = ? ORDER BY createdAt DESC`,
+      query(
+        `SELECT * FROM "Activity" WHERE "leadId" = $1 ORDER BY "createdAt" DESC`,
         [leadId]
       ),
-      queryDB(
-        `SELECT * FROM PaymentLink WHERE leadId = ?`,
+      query(
+        `SELECT * FROM "PaymentLink" WHERE "leadId" = $1`,
         [leadId]
       ),
     ]);
