@@ -112,10 +112,11 @@ export async function initializeDatabase() {
 
     console.log('✅ Database tables initialized');
 
-    // Add sample data if empty
+    // Add sample data if empty - skip if data already exists
     const userCount = await pool.query('SELECT COUNT(*) as count FROM "User"');
     if (userCount.rows[0].count === 0) {
       console.log('📝 Adding comprehensive sample data...');
+      try {
 
       // Insert users
       await pool.query(`
@@ -192,6 +193,11 @@ export async function initializeDatabase() {
       `);
 
       console.log('✅ All sample data added successfully');
+      } catch (seedError) {
+        console.log('ℹ️  Sample data already exists, skipping insertion');
+      }
+    } else {
+      console.log('ℹ️  Database already populated with data');
     }
 
     initialized = true;
