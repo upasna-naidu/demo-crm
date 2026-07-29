@@ -83,13 +83,24 @@ export default function ContactsPage() {
           filtered = filtered.filter((l: any) => matchesSearch(l, search));
         }
 
-        // Apply advanced filters
-        if (advancedFilters.length > 0) {
-          filtered = applyAdvancedFilters(filtered, advancedFilters);
+        // Apply stage filter
+        if (stageFilter) {
+          filtered = filtered.filter((l: any) => l.stageId === stageFilter);
         }
 
+        // Apply source filter
+        if (sourceFilter) {
+          filtered = filtered.filter((l: any) => l.source === sourceFilter);
+        }
+
+        // Apply owner filter
         if (ownerFilter) {
           filtered = filtered.filter((l: any) => l.ownerId === ownerFilter);
+        }
+
+        // Apply advanced filters (with AND/OR logic)
+        if (advancedFilters.length > 0) {
+          filtered = applyAdvancedFilters(filtered, advancedFilters);
         }
 
         if (sortBy === 'name') {
