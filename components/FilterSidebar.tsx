@@ -256,7 +256,7 @@ export default function FilterSidebar({
                       >
                         <option value="">-- Select a value --</option>
                         {getDropdownOptions(filter.field).map((opt, idx) => (
-                          <option key={`${opt.id}-${idx}`} value={opt.id}>
+                          <option key={`${opt.id}-${idx}`} value={opt.label}>
                             {opt.label}
                           </option>
                         ))}
