@@ -162,7 +162,12 @@ export default function ContactsPage() {
 
   const matchesFilterRule = (item: any, rule: FilterRule): boolean => {
     const fieldValue = getFieldValue(item, rule.field);
-    const ruleValue = rule.value;
+    let ruleValue = rule.value;
+
+    // Extract label if ruleValue is an object (from dropdown)
+    if (typeof ruleValue === 'object' && ruleValue !== null && 'label' in ruleValue) {
+      ruleValue = ruleValue.label;
+    }
 
     if (fieldValue === null || fieldValue === undefined) {
       return rule.operator === 'notEquals';
