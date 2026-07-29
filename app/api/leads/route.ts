@@ -47,8 +47,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('❌ GET /api/leads error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: 'Failed to fetch leads', details: String(error) },
+      {
+        error: 'Failed to fetch leads',
+        details: errorMessage,
+        stack: String(error)
+      },
       { status: 500 }
     );
   }
