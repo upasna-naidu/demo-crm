@@ -21,10 +21,11 @@ export async function GET(request: NextRequest) {
          LIMIT $1 OFFSET $2`,
         [limit, offset]
       ),
-      queryOne('SELECT COUNT(*) as total FROM "Lead"'),
+      query('SELECT COUNT(*)::int as total FROM "Lead"'),
     ]);
 
     console.log('✅ Found %d leads', leadsData.length);
+    console.log('📊 Count data:', countData);
 
     const leads = leadsData.map((l: any) => ({
       ...l,
@@ -32,12 +33,14 @@ export async function GET(request: NextRequest) {
       owner: { name: l.ownerName },
     }));
 
+    const total = countData[0]?.total || 0;
+
     return NextResponse.json({
       leads,
-      total: countData?.total || 0,
+      total,
       page,
       limit,
-      pages: Math.ceil((countData?.total || 0) / limit),
+      pages: Math.ceil(total / limit),
     });
   } catch (error) {
     console.error('❌ GET /api/leads error:', error);
