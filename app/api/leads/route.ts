@@ -11,26 +11,29 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Fetching leads: page=%d, limit=%d, offset=%d', page, limit, offset);
 
-    const [leadsData, countData] = await Promise.all([
-      query(
-        `SELECT l.*, s.name as "stageName", u.name as "ownerName"
-         FROM "Lead" l
-         LEFT JOIN "Stage" s ON l."stageId" = s.id
-         LEFT JOIN "User" u ON l."ownerId" = u.id
-         ORDER BY l."createdAt" DESC
-         LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      ),
-      query('SELECT COUNT(*)::int as total FROM "Lead"'),
-    ]);
+    const leadsData = await query(
+      `SELECT * FROM "Lead"
+       ORDER BY "createdAt" DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    const countData = await query('SELECT COUNT(*)::int as total FROM "Lead"');
 
     console.log('✅ Found %d leads', leadsData.length);
-    console.log('📊 Count data:', countData);
+    console.log('📊 Total:', countData[0]?.total);
+
+    // Get stages and users for mapping
+    const stages = await query('SELECT id, name FROM "Stage"');
+    const users = await query('SELECT id, name FROM "User"');
+
+    const stageMap = new Map(stages.map((s: any) => [s.id, s.name]));
+    const userMap = new Map(users.map((u: any) => [u.id, u.name]));
 
     const leads = leadsData.map((l: any) => ({
       ...l,
-      stage: { name: l.stageName },
-      owner: { name: l.ownerName },
+      stage: { name: stageMap.get(l.stageId) || null },
+      owner: { name: userMap.get(l.ownerId) || null },
     }));
 
     const total = countData[0]?.total || 0;
