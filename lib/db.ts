@@ -1,74 +1,134 @@
-import sqlite3 from 'sqlite3';
+let db: any = null;
 
-let db: sqlite3.Database | null = null;
+// Determine which database to use
+const usePostgres = !!process.env.DATABASE_URL;
 
-export function closeDB() {
-  if (db) {
-    db.close((err) => {
-      if (err) console.error('DB close error:', err);
-      else console.log('DB closed');
-    });
-    db = null;
-  }
+if (usePostgres) {
+  console.log('Using PostgreSQL database');
+} else {
+  console.log('Using SQLite database');
 }
 
-function getDB(): sqlite3.Database {
-  if (!db) {
-    db = new sqlite3.Database('./prisma/dev.db', (err) => {
-      if (err) {
-        console.error('DB connection error:', err);
-      } else {
-        console.log('DB connected successfully');
-      }
+async function getDB() {
+  if (db) return db;
+
+  if (usePostgres) {
+    // PostgreSQL
+    const pg = await import('pg');
+    const { Pool } = pg;
+    db = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     });
-    db.configure('busyTimeout', 30000);
+    db.on('error', (err: any) => console.error('Unexpected error on idle client', err));
+  } else {
+    // SQLite
+    const sqlite3 = await import('sqlite3');
+    return new Promise<any>((resolve, reject) => {
+      const database = new sqlite3.default.Database('./prisma/dev.db', (err: any) => {
+        if (err) {
+          console.error('DB connection error:', err);
+          reject(err);
+        } else {
+          console.log('SQLite DB connected successfully');
+          database.configure('busyTimeout', 30000);
+          resolve(database);
+        }
+      });
+    });
   }
+
   return db;
 }
 
-function convertSQL(sql: string, params: any[]): string {
-  let sqliteSQL = sql;
-  for (let i = params.length; i > 0; i--) {
-    sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
+function convertSQL(sql: string, params: any[]): { sql: string; params: any[] } {
+  if (usePostgres) {
+    // PostgreSQL uses $1, $2, etc (already in the SQL)
+    return { sql, params };
+  } else {
+    // SQLite uses ?
+    let sqliteSQL = sql;
+    for (let i = params.length; i > 0; i--) {
+      sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
+    }
+    return { sql: sqliteSQL, params };
   }
-  return sqliteSQL;
 }
 
 export async function query(sql: string, params: any[] = []): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const sqliteSQL = convertSQL(sql, params);
-    getDB().all(sqliteSQL, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows || []);
+  const converted = convertSQL(sql, params);
+
+  if (usePostgres) {
+    const pool = await getDB();
+    const result = await pool.query(converted.sql, converted.params);
+    return result.rows;
+  } else {
+    const database = await getDB();
+    return new Promise((resolve, reject) => {
+      database.all(converted.sql, converted.params, (err: any, rows: any) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
     });
-  });
+  }
 }
 
 export async function queryOne(sql: string, params: any[] = []): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const sqliteSQL = convertSQL(sql, params);
-    getDB().get(sqliteSQL, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
+  const converted = convertSQL(sql, params);
+
+  if (usePostgres) {
+    const pool = await getDB();
+    const result = await pool.query(converted.sql, converted.params);
+    return result.rows[0] || null;
+  } else {
+    const database = await getDB();
+    return new Promise((resolve, reject) => {
+      database.get(converted.sql, converted.params, (err: any, row: any) => {
+        if (err) reject(err);
+        else resolve(row || null);
+      });
     });
-  });
+  }
 }
 
 export async function run(sql: string, params: any[] = []): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const sqliteSQL = convertSQL(sql, params);
-    console.log('[DB.run] SQL:', sqliteSQL);
-    console.log('[DB.run] Params:', params);
+  const converted = convertSQL(sql, params);
 
-    const connection = getDB();
-    connection.run(sqliteSQL, params, function(err) {
-      if (err) {
-        console.error('[DB.run] ERROR:', err);
-        reject(err);
-      } else {
-        console.log('[DB.run] EXECUTED. Changes:', this.changes);
-        resolve({ lastID: this.lastID, changes: this.changes });
-      }
+  console.log('[DB.run] SQL:', converted.sql);
+  console.log('[DB.run] Params:', converted.params);
+
+  if (usePostgres) {
+    const pool = await getDB();
+    const result = await pool.query(converted.sql, converted.params);
+    return { lastID: null, changes: result.rowCount };
+  } else {
+    const database = await getDB();
+    return new Promise((resolve: any, reject: any) => {
+      database.run(converted.sql, converted.params, function (err: any) {
+        if (err) {
+          console.error('[DB.run] ERROR:', err);
+          return reject(err);
+        }
+        // @ts-ignore
+        const ctx = this;
+        const changes = ctx.changes || 0;
+        const lastID = ctx.lastID || null;
+        console.log('[DB.run] EXECUTED. Changes:', changes);
+        resolve({ lastID, changes });
+      });
     });
-  });
+  }
+}
+
+export async function closeDB() {
+  if (usePostgres && db) {
+    await db.end();
+    db = null;
+  } else if (!usePostgres && db) {
+    db.close((err: any) => {
+      if (err) console.error('DB close error:', err);
+      else console.log('SQLite DB closed');
+    });
+    db = null;
+  }
 }
