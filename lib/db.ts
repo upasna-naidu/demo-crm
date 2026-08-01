@@ -1,195 +1,74 @@
-import { Pool } from 'pg';
+import sqlite3 from 'sqlite3';
 
-let pool: Pool | null = null;
-let isInitialized = false;
-let isSchemaCreated = false;
+let db: sqlite3.Database | null = null;
 
-async function createSchema() {
-  if (isSchemaCreated || !pool) return;
-
-  try {
-    // Create tables
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "User" (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        role TEXT DEFAULT 'Sales Rep',
-        organization TEXT,
-        status TEXT DEFAULT 'active',
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "Stage" (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        color TEXT,
-        "order" INTEGER,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "Lead" (
-        id TEXT PRIMARY KEY,
-        "leadId" TEXT,
-        name TEXT NOT NULL,
-        email TEXT,
-        phone TEXT,
-        company TEXT,
-        source TEXT,
-        "utmSource" TEXT,
-        "utmMedium" TEXT,
-        "utmCampaign" TEXT,
-        "utmTerm" TEXT,
-        "utmContent" TEXT,
-        "stageId" TEXT REFERENCES "Stage"(id),
-        "ownerId" TEXT REFERENCES "User"(id),
-        "dealValue" DECIMAL,
-        "customFields" JSONB,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "Note" (
-        id TEXT PRIMARY KEY,
-        "leadId" TEXT REFERENCES "Lead"(id),
-        "authorId" TEXT REFERENCES "User"(id),
-        content TEXT,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "Email" (
-        id TEXT PRIMARY KEY,
-        "leadId" TEXT REFERENCES "Lead"(id),
-        subject TEXT,
-        body TEXT,
-        direction TEXT,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "CallLog" (
-        id TEXT PRIMARY KEY,
-        "leadId" TEXT REFERENCES "Lead"(id),
-        duration INTEGER,
-        notes TEXT,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "Activity" (
-        id TEXT PRIMARY KEY,
-        "leadId" TEXT REFERENCES "Lead"(id),
-        type TEXT,
-        description TEXT,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "PaymentLink" (
-        id TEXT PRIMARY KEY,
-        "leadId" TEXT REFERENCES "Lead"(id),
-        url TEXT,
-        amount DECIMAL,
-        status TEXT,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    isSchemaCreated = true;
-    console.log('✅ Database schema initialized');
-  } catch (error) {
-    console.error('❌ Schema creation error:', error);
+export function closeDB() {
+  if (db) {
+    db.close((err) => {
+      if (err) console.error('DB close error:', err);
+      else console.log('DB closed');
+    });
+    db = null;
   }
 }
 
-function initDb() {
-  if (isInitialized) return;
-
-  if (!process.env.DATABASE_URL) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('DATABASE_URL is required in production');
-    }
-    return;
-  }
-
-  try {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+function getDB(): sqlite3.Database {
+  if (!db) {
+    db = new sqlite3.Database('./prisma/dev.db', (err) => {
+      if (err) {
+        console.error('DB connection error:', err);
+      } else {
+        console.log('DB connected successfully');
+      }
     });
-    isInitialized = true;
-    console.log('✅ Database pool initialized');
-    createSchema().catch(err => console.error('Schema creation failed:', err));
-  } catch (error) {
-    console.error('❌ Failed to initialize database pool:', error);
-    throw error;
+    db.configure('busyTimeout', 30000);
   }
+  return db;
+}
+
+function convertSQL(sql: string, params: any[]): string {
+  let sqliteSQL = sql;
+  for (let i = params.length; i > 0; i--) {
+    sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
+  }
+  return sqliteSQL;
 }
 
 export async function query(sql: string, params: any[] = []): Promise<any> {
-  if (!pool) {
-    initDb();
-  }
-
-  if (!pool) {
-    throw new Error('Database not available. DATABASE_URL not set');
-  }
-
-  try {
-    const result = await pool.query(sql, params);
-    return result.rows;
-  } catch (error) {
-    console.error('Query error:', sql, params, error);
-    throw error;
-  }
+  return new Promise((resolve, reject) => {
+    const sqliteSQL = convertSQL(sql, params);
+    getDB().all(sqliteSQL, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows || []);
+    });
+  });
 }
 
 export async function queryOne(sql: string, params: any[] = []): Promise<any> {
-  if (!pool) {
-    initDb();
-  }
-
-  if (!pool) {
-    throw new Error('Database not available. DATABASE_URL not set');
-  }
-
-  try {
-    const result = await pool.query(sql, params);
-    return result.rows[0];
-  } catch (error) {
-    console.error('QueryOne error:', sql, params, error);
-    throw error;
-  }
+  return new Promise((resolve, reject) => {
+    const sqliteSQL = convertSQL(sql, params);
+    getDB().get(sqliteSQL, params, (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
 }
 
 export async function run(sql: string, params: any[] = []): Promise<any> {
-  if (!pool) {
-    initDb();
-  }
+  return new Promise((resolve, reject) => {
+    const sqliteSQL = convertSQL(sql, params);
+    console.log('[DB.run] SQL:', sqliteSQL);
+    console.log('[DB.run] Params:', params);
 
-  if (!pool) {
-    throw new Error('Database not available. DATABASE_URL not set');
-  }
-
-  try {
-    return await pool.query(sql, params);
-  } catch (error) {
-    console.error('Run error:', sql, params, error);
-    throw error;
-  }
+    const connection = getDB();
+    connection.run(sqliteSQL, params, function(err) {
+      if (err) {
+        console.error('[DB.run] ERROR:', err);
+        reject(err);
+      } else {
+        console.log('[DB.run] EXECUTED. Changes:', this.changes);
+        resolve({ lastID: this.lastID, changes: this.changes });
+      }
+    });
+  });
 }
-
-// Initialize on module load
-initDb();

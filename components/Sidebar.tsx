@@ -16,17 +16,17 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   };
 
   const menuItems = [
-    { label: 'Bookmarks', href: '/bookmarks' },
+    { label: 'Dashboard', href: '/' },
     { label: 'Contacts', href: '/contacts' },
     { label: 'Marketing', href: '/marketing' },
-    { label: 'Content', href: '/content' },
     { label: 'Sales', href: '/sales' },
-    { label: 'Commerce', href: '/commerce' },
+    { label: 'Operations', href: '/operations' },
     { label: 'Service', href: '/service' },
-    { label: 'Data Management', href: '/data-management' },
+    { label: 'Analytics', href: '/analytics' },
+    { label: 'Content', href: '/content' },
+    { label: 'Commerce', href: '/commerce' },
     { label: 'Automation', href: '/automation' },
-    { label: 'Reporting', href: '/reports' },
-    { label: 'Breeze', href: '/breeze' },
+    { label: 'Reports', href: '/reports' },
     { label: 'Development', href: '/development' },
   ];
 

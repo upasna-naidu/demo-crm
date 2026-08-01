@@ -133,11 +133,21 @@ export default function LeadsTable({ leads, columns = [] }: { leads: Lead[]; col
   return (
     <div className="card">
       <div className="overflow-auto" style={{ maxHeight: '70vh' }}>
-        <table>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#f9fafb', borderBottom: '1px solid var(--border-light)' }}>
             <tr>
               {visibleColumns.map((col) => (
-                <th key={col.id} style={{ width: COLUMN_WIDTHS[col.id] || '12%' }}>
+                <th
+                  key={col.id}
+                  style={{
+                    width: COLUMN_WIDTHS[col.id] || '12%',
+                    padding: '12px 16px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    fontSize: '0.875em',
+                    color: 'var(--text-tertiary)'
+                  }}
+                >
                   {col.label}
                 </th>
               ))}
@@ -145,9 +155,23 @@ export default function LeadsTable({ leads, columns = [] }: { leads: Lead[]; col
           </thead>
           <tbody>
             {leads.map((lead) => (
-              <tr key={lead.id} className="hover:bg-gray-50 cursor-pointer transition-colors">
+              <tr
+                key={lead.id}
+                style={{
+                  borderBottom: '1px solid var(--border-light)',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
                 {visibleColumns.map((col) => (
-                  <td key={`${lead.id}-${col.id}`}>
+                  <td
+                    key={`${lead.id}-${col.id}`}
+                    style={{
+                      padding: '12px 16px',
+                      fontSize: '0.875em'
+                    }}
+                  >
                     {renderCell(lead, col.id)}
                   </td>
                 ))}

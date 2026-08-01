@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 const COUNTRY_CODES = [
   { code: '+1', name: 'USA/Canada', digits: 10 },
@@ -241,6 +242,19 @@ export default function LeadDetailPage() {
   const [newPropertyValue, setNewPropertyValue] = useState('');
   const [customProperties, setCustomProperties] = useState<Record<string, string>>({});
   const [propertyOrder, setPropertyOrder] = useState<string[]>([]);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteContent, setEditingNoteContent] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [emailFrom, setEmailFrom] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emails, setEmails] = useState<any[]>([]);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [showTemplateList, setShowTemplateList] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadLead = async () => {
@@ -289,18 +303,29 @@ export default function LeadDetailPage() {
     if (leadId) loadLead();
   }, [leadId]);
 
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const res = await fetch('/api/email-templates');
+        const data = await res.json();
+        setTemplates(data || []);
+      } catch (error) {
+        console.error('Failed to load templates:', error);
+      }
+    };
+    loadTemplates();
+  }, []);
+
   const validateEmail = (email: string): boolean => {
     return email.includes('@');
   };
 
   const validatePhone = (phone: string, country: string): boolean => {
-    const countryInfo = COUNTRY_CODES.find(c => c.code === country);
-    if (!countryInfo) return false;
     const digitsOnly = phone.replace(/\D/g, '');
-    return digitsOnly.length === countryInfo.digits;
+    return digitsOnly.length >= 7; // Allow any phone with at least 7 digits
   };
 
-  const handleSaveContact = () => {
+  const handleSaveContact = async () => {
     let isValid = true;
 
     // Validate email
@@ -325,25 +350,217 @@ export default function LeadDetailPage() {
     // Combine country code with phone
     const fullPhone = editedContact.phone ? `${countryCode}${editedContact.phone.replace(/\D/g, '')}` : '';
 
-    setLead({
-      ...lead,
-      email: editedContact.email,
-      phone: fullPhone,
-      company: editedContact.company,
-    });
-    setIsEditingContact(false);
+    try {
+      console.log('Saving contact for leadId:', leadId);
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: editedContact.email,
+          phone: fullPhone,
+          company: editedContact.company,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Save response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save contact');
+      }
+
+      // Update local state with saved data
+      setLead({
+        ...lead,
+        email: editedContact.email,
+        phone: fullPhone,
+        company: editedContact.company,
+      });
+
+      // Update display to show the saved phone without country code
+      setEditedContact({
+        email: editedContact.email,
+        phone: editedContact.phone, // Keep the entered number
+        company: editedContact.company,
+      });
+
+      setIsEditingContact(false);
+      alert('✅ Contact saved successfully!');
+    } catch (error) {
+      console.error('Save error:', error);
+      alert('❌ Error saving contact: ' + String(error));
+    }
   };
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!noteContent.trim()) return;
-    const newNote = {
-      id: Date.now().toString(),
-      content: noteContent,
-      createdAt: new Date().toISOString(),
-      author: { name: 'Admin' },
-    };
-    setNotes([newNote, ...notes]);
-    setNoteContent('');
+    try {
+      const response = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId,
+          content: noteContent,
+          authorId: user?.id,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save note');
+
+      const newNote = await response.json();
+      setNotes([
+        {
+          id: newNote.id,
+          content: newNote.content,
+          createdAt: newNote.createdAt,
+          author: { name: user?.name || 'Admin' },
+        },
+        ...notes,
+      ]);
+      setNoteContent('');
+    } catch (error) {
+      alert('Error saving note: ' + String(error));
+    }
+  };
+
+  const handleEditNote = (noteId: string, content: string) => {
+    setEditingNoteId(noteId);
+    setEditingNoteContent(content);
+  };
+
+  const handleSaveNote = (noteId: string) => {
+    if (!editingNoteContent.trim()) return;
+    const updatedNotes = notes.map(n =>
+      n.id === noteId ? { ...n, content: editingNoteContent } : n
+    );
+    setNotes(updatedNotes);
+    setEditingNoteId(null);
+    setEditingNoteContent('');
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    setNotes(notes.filter(n => n.id !== noteId));
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim() || !emailSubject.trim() || !emailBody.trim()) {
+      alert('Template name, subject, and body are required');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/email-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: templateName,
+          subject: emailSubject,
+          body: emailBody,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save template');
+
+      const newTemplate = await response.json();
+      setTemplates([newTemplate, ...templates]);
+      setShowTemplateModal(false);
+      setTemplateName('');
+      alert('Template saved!');
+    } catch (error) {
+      alert('Error saving template: ' + String(error));
+    }
+  };
+
+  const handleApplyTemplate = (template: any) => {
+    setEmailSubject(template.subject);
+    setEmailBody(template.body);
+    setShowTemplateList(false);
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!confirm('Delete this template?')) return;
+
+    try {
+      const response = await fetch(`/api/email-templates?id=${templateId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete template');
+
+      setTemplates(templates.filter(t => t.id !== templateId));
+      alert('Template deleted!');
+    } catch (error) {
+      alert('Error deleting template: ' + String(error));
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailSubject.trim() || !emailBody.trim()) {
+      alert('Subject and body are required');
+      return;
+    }
+
+    if (!emailFrom.trim()) {
+      alert('FROM email is required');
+      return;
+    }
+
+    setEmailSending(true);
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: lead.email,
+          subject: emailSubject,
+          body: emailBody,
+          senderName: user?.name || 'CRM System',
+          senderEmail: emailFrom,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to send email');
+
+      // Save email to database
+      const emailRes = await fetch('/api/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId,
+          subject: emailSubject,
+          body: emailBody,
+          from: emailFrom,
+          to: lead.email,
+          direction: 'sent',
+        }),
+      });
+
+      if (emailRes.ok) {
+        const savedEmail = await emailRes.json();
+        const newEmail = {
+          id: savedEmail.id,
+          subject: emailSubject,
+          body: emailBody,
+          direction: 'sent',
+          from: emailFrom,
+          to: lead.email,
+          createdAt: savedEmail.createdAt,
+        };
+
+        setEmails([newEmail, ...emails]);
+        alert('Email sent successfully!');
+        setShowEmailForm(false);
+        setEmailSubject('');
+        setEmailBody('');
+        setEmailFrom('');
+        setActiveActivityTab('emails');
+      }
+
+    } catch (error) {
+      alert('Error sending email: ' + String(error));
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const handleStageChange = (stageId: string) => {
@@ -385,7 +602,7 @@ export default function LeadDetailPage() {
     return <div className="p-8 text-center">Loading...</div>;
   }
 
-  if (!lead) {
+  if (!lead || !lead.name) {
     return <div className="p-8 text-center">Lead not found</div>;
   }
 
@@ -396,11 +613,11 @@ export default function LeadDetailPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ backgroundColor: 'var(--accent)' }}>
-              {lead.name.charAt(0).toUpperCase()}
+              {(lead.name || '?').charAt(0).toUpperCase()}
             </div>
             <div>
-              <h1 className="text-3xl font-bold">{lead.name}</h1>
-              <p style={{ color: 'var(--text-tertiary)' }}>{lead.leadId}</p>
+              <h1 className="text-3xl font-bold">{lead.name || 'Unnamed Lead'}</h1>
+              <p style={{ color: 'var(--text-tertiary)' }}>{lead.leadId || lead.id}</p>
             </div>
           </div>
           <Link href="/contacts" className="btn btn-secondary">← Back</Link>
@@ -414,7 +631,15 @@ export default function LeadDetailPage() {
           {/* Contact Actions */}
           <div className="card p-4">
             <div className="flex gap-2 justify-around">
-              <button className="flex flex-col items-center gap-1 p-3 hover:bg-gray-50 rounded transition-colors flex-1" title="Send Email">
+              <button
+                onClick={() => {
+                  setActiveTab('activities');
+                  setActiveActivityTab('emails');
+                  setShowEmailForm(true);
+                }}
+                className="flex flex-col items-center gap-1 p-3 hover:bg-gray-50 rounded transition-colors flex-1"
+                title="Send Email"
+              >
                 <span className="text-2xl">✉️</span>
                 <span className="text-xs font-medium">Email</span>
               </button>
@@ -518,7 +743,7 @@ export default function LeadDetailPage() {
                       {phoneError && <p className="text-xs text-red-600 mt-1">{phoneError}</p>}
                     </>
                   ) : (
-                    <p className="mt-1 font-medium">{editedContact.phone || '—'}</p>
+                    <p className="mt-1 font-medium">{editedContact.phone || lead.phone || '—'}</p>
                   )}
                 </div>
               )}
@@ -605,7 +830,7 @@ export default function LeadDetailPage() {
           )}
 
           {/* Owner */}
-          {lead.owner && (
+          {lead.owner && lead.owner.name && (
             <div className="card p-4">
               <p className="text-xs font-bold uppercase" style={{ color: 'var(--text-tertiary)' }}>Owner</p>
               <div className="flex items-center gap-3 mt-3">
@@ -867,11 +1092,61 @@ export default function LeadDetailPage() {
                             className="p-3 rounded border"
                             style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-light)' }}
                           >
-                            <p className="font-bold text-xs">{note.author?.name || 'Admin'}</p>
-                            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                              {new Date(note.createdAt).toLocaleString()}
-                            </p>
-                            <p className="mt-2 text-sm">{note.content}</p>
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <p className="font-bold text-xs">{note.author?.name || 'Admin'}</p>
+                                <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                                  {new Date(note.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                              {editingNoteId !== note.id && (
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => handleEditNote(note.id, note.content)}
+                                    className="text-xs px-2 py-1 rounded hover:bg-gray-300 transition-colors"
+                                    title="Edit"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteNote(note.id)}
+                                    className="text-xs px-2 py-1 rounded hover:bg-red-200 transition-colors"
+                                    title="Delete"
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            {editingNoteId === note.id ? (
+                              <div className="space-y-2">
+                                <textarea
+                                  value={editingNoteContent}
+                                  onChange={(e) => setEditingNoteContent(e.target.value)}
+                                  className="w-full p-2 border rounded text-sm"
+                                  style={{ borderColor: 'var(--border-light)' }}
+                                  rows={3}
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleSaveNote(note.id)}
+                                    className="text-xs px-3 py-1 rounded font-medium text-white"
+                                    style={{ backgroundColor: 'var(--primary)' }}
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingNoteId(null)}
+                                    className="text-xs px-3 py-1 rounded border"
+                                    style={{ borderColor: 'var(--border-light)' }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-sm">{note.content}</p>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -881,32 +1156,178 @@ export default function LeadDetailPage() {
 
                 {/* Emails Section */}
                 {activeActivityTab === 'emails' && (
-                  <div>
-                    <h4 className="font-bold mb-4">Email Log</h4>
-                    {lead.emails && lead.emails.length > 0 ? (
-                      <div className="space-y-3">
-                        {lead.emails.map((email: any) => (
-                          <div
-                            key={email.id}
-                            className="p-3 rounded border-l-4 text-sm"
-                            style={{
-                              backgroundColor: 'var(--bg-secondary)',
-                              borderLeftColor: email.direction === 'sent' ? 'var(--primary)' : 'var(--accent)',
-                            }}
-                          >
-                            <p className="font-bold text-xs">
-                              {email.direction === 'sent' ? '📤 Sent' : '📥 Received'}
-                            </p>
-                            <p className="font-medium mt-1">{email.subject}</p>
-                            <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
-                              {new Date(email.createdAt).toLocaleString()}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="space-y-4">
+                    {!showEmailForm ? (
+                      <button
+                        onClick={() => setShowEmailForm(true)}
+                        className="w-full btn btn-primary"
+                      >
+                        ✉️ Send Email
+                      </button>
                     ) : (
-                      <p style={{ color: 'var(--text-tertiary)' }}>No emails yet</p>
+                      <div className="border rounded-lg p-4" style={{ borderColor: 'var(--border-light)', backgroundColor: 'var(--bg-secondary)' }}>
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="font-bold">Compose Email</h4>
+                          <div className="flex gap-2">
+                            {templates.length > 0 && (
+                              <button
+                                onClick={() => setShowTemplateList(!showTemplateList)}
+                                className="text-xs px-2 py-1 border rounded hover:bg-gray-100"
+                                style={{ borderColor: 'var(--border-light)' }}
+                              >
+                                📋 Templates ({templates.length})
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setShowTemplateModal(true)}
+                              className="text-xs px-2 py-1 border rounded hover:bg-gray-100"
+                              style={{ borderColor: 'var(--border-light)' }}
+                            >
+                              💾 Save as Template
+                            </button>
+                          </div>
+                        </div>
+
+                        {showTemplateList && templates.length > 0 && (
+                          <div className="mb-4 p-3 border rounded bg-white" style={{ borderColor: 'var(--border-light)' }}>
+                            <p className="text-xs font-bold mb-2" style={{ color: 'var(--text-tertiary)' }}>Quick Templates</p>
+                            <div className="space-y-2">
+                              {templates.map((template) => (
+                                <div key={template.id} className="flex items-center justify-between text-xs p-2 border rounded" style={{ borderColor: 'var(--border-light)' }}>
+                                  <button
+                                    onClick={() => handleApplyTemplate(template)}
+                                    className="flex-1 text-left hover:font-bold"
+                                  >
+                                    {template.name}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTemplate(template.id)}
+                                    className="text-red-600 hover:text-red-800 px-2"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs font-bold uppercase" style={{ color: 'var(--text-tertiary)' }}>
+                              To
+                            </label>
+                            <p className="mt-1 p-2 bg-white rounded text-sm border" style={{ borderColor: 'var(--border-light)' }}>{lead.email}</p>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold uppercase" style={{ color: 'var(--text-tertiary)' }}>
+                              From
+                            </label>
+                            <input
+                              type="email"
+                              value={emailFrom}
+                              onChange={(e) => setEmailFrom(e.target.value)}
+                              placeholder="your-email@gmail.com"
+                              className="w-full mt-1 p-2 border rounded text-sm"
+                              style={{ borderColor: 'var(--border-light)' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold uppercase" style={{ color: 'var(--text-tertiary)' }}>
+                              Subject
+                            </label>
+                            <input
+                              type="text"
+                              value={emailSubject}
+                              onChange={(e) => setEmailSubject(e.target.value)}
+                              placeholder="Email subject"
+                              className="w-full mt-1 p-2 border rounded text-sm"
+                              style={{ borderColor: 'var(--border-light)' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold uppercase" style={{ color: 'var(--text-tertiary)' }}>
+                              Body
+                            </label>
+                            <textarea
+                              value={emailBody}
+                              onChange={(e) => setEmailBody(e.target.value)}
+                              placeholder="Email body"
+                              className="w-full mt-1 p-2 border rounded text-sm"
+                              style={{ borderColor: 'var(--border-light)' }}
+                              rows={4}
+                            />
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setShowEmailForm(false);
+                                setEmailSubject('');
+                                setEmailBody('');
+                                setEmailFrom('');
+                              }}
+                              disabled={emailSending}
+                              className="flex-1 py-2 px-4 text-sm font-medium border rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+                              style={{ borderColor: 'var(--border-light)' }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSendEmail}
+                              disabled={emailSending}
+                              className="flex-1 py-2 px-4 text-sm font-medium text-white rounded transition-colors disabled:opacity-50"
+                              style={{ backgroundColor: 'var(--primary)' }}
+                            >
+                              {emailSending ? 'Sending...' : 'Send Email'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     )}
+
+                    <div>
+                      <h4 className="font-bold mb-3">Email Log</h4>
+                      {(emails.length > 0 || (lead.emails && lead.emails.length > 0)) ? (
+                        <div className="space-y-3">
+                          {emails.concat(lead.emails || []).map((email: any) => (
+                            <div
+                              key={email.id}
+                              className="p-3 rounded border-l-4 text-sm"
+                              style={{
+                                backgroundColor: 'var(--bg-secondary)',
+                                borderLeftColor: email.direction === 'sent' ? 'var(--primary)' : 'var(--accent)',
+                              }}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="font-bold text-xs">
+                                    {email.direction === 'sent' ? '📤 Sent' : '📥 Received'}
+                                  </p>
+                                  <p className="font-medium mt-1">{email.subject}</p>
+                                  {email.body && (
+                                    <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
+                                      {email.body}
+                                    </p>
+                                  )}
+                                  <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
+                                    {email.direction === 'sent' ? `From: ${email.from}` : `To: ${email.to}`}
+                                  </p>
+                                  <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                                    {new Date(email.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ color: 'var(--text-tertiary)' }}>No emails yet</p>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -1007,6 +1428,52 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
+      {/* Save Email Template Modal */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
+            <h3 className="text-lg font-bold mb-4">Save as Template</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold uppercase" style={{ color: 'var(--text-tertiary)' }}>
+                  Template Name
+                </label>
+                <input
+                  type="text"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="e.g., Follow-up"
+                  className="w-full mt-2 p-2 border rounded text-sm"
+                  style={{ borderColor: 'var(--border-light)' }}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setTemplateName('');
+                }}
+                className="flex-1 py-2 px-4 text-sm font-medium border rounded hover:bg-gray-50 transition-colors"
+                style={{ borderColor: 'var(--border-light)' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTemplate}
+                className="flex-1 py-2 px-4 text-sm font-medium text-white rounded transition-colors"
+                style={{ backgroundColor: 'var(--primary)' }}
+              >
+                Save Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Custom Property Modal */}
       {showAddPropertyModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -1067,6 +1534,7 @@ export default function LeadDetailPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

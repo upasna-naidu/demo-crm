@@ -65,6 +65,7 @@ export default function ContactsPage() {
       try {
         setLoading(true);
         const query = new URLSearchParams();
+        query.append('limit', '100');
         if (search) query.append('search', search);
         if (stageFilter) query.append('stageId', stageFilter);
         if (sourceFilter) query.append('source', sourceFilter);
@@ -103,7 +104,9 @@ export default function ContactsPage() {
           filtered = applyAdvancedFilters(filtered, advancedFilters);
         }
 
-        if (sortBy === 'name') {
+        if (sortBy === 'newest') {
+          filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        } else if (sortBy === 'name') {
           filtered.sort((a: any, b: any) => a.name.localeCompare(b.name));
         } else if (sortBy === 'value-high') {
           filtered.sort((a: any, b: any) => (b.dealValue || 0) - (a.dealValue || 0));
@@ -129,9 +132,11 @@ export default function ContactsPage() {
     const loadStages = async () => {
       try {
         const stagesRes = await fetch('/api/stages');
-        setStages(await stagesRes.json());
+        const stagesData = await stagesRes.json();
+        setStages(Array.isArray(stagesData) ? stagesData : []);
       } catch (error) {
         console.error('Failed to load stages:', error);
+        setStages([]);
       }
     };
 
@@ -206,6 +211,7 @@ export default function ContactsPage() {
     );
   };
 
+
   const getFieldValue = (item: any, fieldId: string): any => {
     switch (fieldId) {
       case 'leadId':
@@ -268,7 +274,9 @@ export default function ContactsPage() {
             >
               🔍 Filters
             </button>
-            <Link href="/contacts/import" className="btn btn-secondary">📥 Import</Link>
+            <Link href="/contacts/import" className="btn btn-secondary">
+              📥 Import
+            </Link>
             <button className="btn btn-primary">➕ New Contact</button>
           </div>
         </div>

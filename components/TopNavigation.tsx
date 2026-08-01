@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import LoginModal from './LoginModal';
+import CompanySwitcher from './CompanySwitcher';
 
 export default function TopNavigation({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
   const pathname = usePathname();
@@ -13,8 +14,8 @@ export default function TopNavigation({ onToggleSidebar }: { onToggleSidebar?: (
 
   const modules = [
     { name: 'Contacts', href: '/contacts', icon: '👤' },
-    { name: 'Conversations', href: '/conversations', icon: '💬' },
-    { name: 'Marketing', href: '/marketing', icon: '📧' },
+    { name: 'Multi-Channel Inbound', href: '/conversations', icon: '💬' },
+    { name: 'Marketing Hub', href: '/marketing', icon: '📧' },
     { name: 'Sales', href: '/sales', icon: '📊', active: pathname.startsWith('/leads') },
     { name: 'Service', href: '/service', icon: '🎫' },
     { name: 'Automation', href: '/automation', icon: '⚡' },
@@ -41,6 +42,9 @@ export default function TopNavigation({ onToggleSidebar }: { onToggleSidebar?: (
             </div>
             <span className="font-semibold text-sm" style={{ color: 'var(--primary)' }}>CRM</span>
           </button>
+
+          {/* Company Switcher */}
+          {isLoggedIn && <CompanySwitcher />}
 
           {/* Main Modules */}
           <div className="flex gap-8 px-4">
@@ -72,7 +76,7 @@ export default function TopNavigation({ onToggleSidebar }: { onToggleSidebar?: (
           <button className="text-gray-600 hover:text-gray-900 transition-colors text-sm">❓</button>
 
           {isLoggedIn && (
-            <Link href="/admin" className="text-gray-600 hover:text-gray-900 transition-colors text-sm" title="Admin Dashboard">
+            <Link href="/admin/companies" className="text-gray-600 hover:text-gray-900 transition-colors text-sm" title="Companies Admin">
               ⚙️
             </Link>
           )}

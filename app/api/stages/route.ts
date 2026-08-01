@@ -10,9 +10,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(stages);
   } catch (error) {
     console.error('GET /api/stages error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch stages', details: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json([]);
   }
 }

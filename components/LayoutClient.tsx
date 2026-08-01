@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TopNavigation from './TopNavigation';
 import Sidebar from './Sidebar';
 
@@ -10,6 +10,17 @@ export default function LayoutClient({
   children: React.ReactNode;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  useEffect(() => {
+    const initializeDatabase = async () => {
+      try {
+        await fetch('/api/init-company');
+      } catch (error) {
+        console.error('Auto-init company tables:', error);
+      }
+    };
+    initializeDatabase();
+  }, []);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
