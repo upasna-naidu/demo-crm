@@ -2,11 +2,14 @@ let db: any = null;
 
 // Determine which database to use
 const usePostgres = !!process.env.DATABASE_URL;
+const isProduction = process.env.NODE_ENV === 'production';
 
 if (usePostgres) {
   console.log('Using PostgreSQL database');
+} else if (isProduction) {
+  console.log('Using in-memory SQLite database (Vercel/serverless mode)');
 } else {
-  console.log('Using SQLite database');
+  console.log('Using local SQLite database');
 }
 
 async function getDB() {
@@ -22,16 +25,28 @@ async function getDB() {
     });
     db.on('error', (err: any) => console.error('Unexpected error on idle client', err));
   } else {
-    // SQLite
+    // SQLite - use in-memory for serverless, file-based for local dev
     const sqlite3 = await import('sqlite3');
+    const dbPath = isProduction ? ':memory:' : './prisma/dev.db';
+
     return new Promise<any>((resolve, reject) => {
-      const database = new sqlite3.default.Database('./prisma/dev.db', (err: any) => {
+      const database = new sqlite3.default.Database(dbPath, async (err: any) => {
         if (err) {
           console.error('DB connection error:', err);
           reject(err);
         } else {
-          console.log('SQLite DB connected successfully');
+          console.log(`SQLite DB connected (${isProduction ? 'in-memory' : 'file-based'})`);
           database.configure('busyTimeout', 30000);
+
+          // Initialize tables in-memory
+          if (isProduction) {
+            try {
+              await initializeTables(database);
+            } catch (initErr) {
+              console.error('Table initialization error:', initErr);
+            }
+          }
+
           resolve(database);
         }
       });
@@ -41,12 +56,59 @@ async function getDB() {
   return db;
 }
 
+async function initializeTables(database: any) {
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS "Lead" (
+      id TEXT PRIMARY KEY,
+      "leadId" TEXT,
+      name TEXT,
+      email TEXT,
+      phone TEXT,
+      company TEXT,
+      title TEXT,
+      source TEXT,
+      "stageId" TEXT,
+      "ownerId" TEXT,
+      status TEXT DEFAULT 'new',
+      "createdAt" DATETIME DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS "Deal" (
+      id TEXT PRIMARY KEY,
+      "dealId" TEXT,
+      "leadId" TEXT,
+      title TEXT,
+      value INTEGER,
+      currency TEXT,
+      "stageId" TEXT,
+      probability INTEGER,
+      status TEXT DEFAULT 'open',
+      "createdAt" DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS "PipelineStage" (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      probability INTEGER,
+      "displayOrder" INTEGER
+    )`,
+  ];
+
+  return new Promise<void>((resolve, reject) => {
+    let completed = 0;
+    for (const sql of tables) {
+      database.run(sql, (err: any) => {
+        if (err) console.error('Table creation error:', err);
+        completed++;
+        if (completed === tables.length) resolve();
+      });
+    }
+  });
+}
+
 function convertSQL(sql: string, params: any[]): { sql: string; params: any[] } {
   if (usePostgres) {
-    // PostgreSQL uses $1, $2, etc (already in the SQL)
     return { sql, params };
   } else {
-    // SQLite uses ?
     let sqliteSQL = sql;
     for (let i = params.length; i > 0; i--) {
       sqliteSQL = sqliteSQL.replace(`$${i}`, '?');
@@ -103,7 +165,7 @@ export async function run(sql: string, params: any[] = []): Promise<any> {
     return { lastID: null, changes: result.rowCount };
   } else {
     const database = await getDB();
-    return new Promise((resolve: any, reject: any) => {
+    return new Promise((resolve, reject) => {
       database.run(converted.sql, converted.params, function (err: any) {
         if (err) {
           console.error('[DB.run] ERROR:', err);
