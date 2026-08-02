@@ -74,17 +74,40 @@ const ACTION_CONFIGS: Record<string, any[]> = {
   ],
 };
 
+const TRIGGER_CONFIGS: Record<string, any[]> = {
+  'Lead Created': [
+    { key: 'created_after', label: 'Created After (date)', type: 'date', placeholder: 'Filter leads created after date' },
+    { key: 'source_filter', label: 'From Source', type: 'select', options: ['any', 'website', 'linkedin', 'phone', 'email'] },
+    { key: 'min_score', label: 'Minimum Score', type: 'number', placeholder: '0 - any score' },
+    { key: 'company_filter', label: 'Company Size', type: 'select', options: ['any', 'small', 'medium', 'large', 'enterprise'] },
+  ],
+  'Lead Updated': [
+    { key: 'field_changed', label: 'Field Changed', type: 'select', options: ['any', 'score', 'status', 'company', 'title', 'email'] },
+    { key: 'updated_after', label: 'Updated After (date)', type: 'date' },
+  ],
+  'Deal Moved': [
+    { key: 'from_stage', label: 'From Stage', type: 'select', options: ['any', 'prospecting', 'qualification', 'proposal', 'negotiation', 'closed'] },
+    { key: 'to_stage', label: 'To Stage', type: 'select', options: ['any', 'prospecting', 'qualification', 'proposal', 'negotiation', 'closed'] },
+    { key: 'min_value', label: 'Minimum Deal Value', type: 'number', placeholder: '0' },
+  ],
+};
+
 const CONDITION_CONFIGS: Record<string, any[]> = {
   'Score Check': [
-    { key: 'operator', label: 'Operator', type: 'select', options: ['>', '<', '=', '>=', '<='] },
+    { key: 'operator', label: 'Condition', type: 'select', options: ['>', '<', '=', '>=', '<=', 'between'] },
     { key: 'value', label: 'Score Value', type: 'number', placeholder: '50' },
+    { key: 'value2', label: 'Upper Value (if between)', type: 'number', placeholder: '100' },
+    { key: 'description', label: 'Description', type: 'text', placeholder: 'e.g., Hot lead if score > 75' },
   ],
   'Source Match': [
-    { key: 'source', label: 'Lead Source', type: 'select', options: ['Website', 'LinkedIn', 'Phone', 'Email', 'Event'] },
+    { key: 'source', label: 'Lead Source', type: 'select', options: ['website', 'linkedin', 'phone', 'email', 'event', 'referral'] },
+    { key: 'description', label: 'Description', type: 'text', placeholder: 'e.g., If source is LinkedIn' },
   ],
   'Field Equals': [
-    { key: 'field', label: 'Field Name', type: 'select', options: ['status', 'source', 'company', 'title'] },
+    { key: 'field', label: 'Field Name', type: 'select', options: ['status', 'source', 'company', 'title', 'industry', 'country'] },
+    { key: 'operator', label: 'Operator', type: 'select', options: ['equals', 'not equals', 'contains', 'not contains'] },
     { key: 'value', label: 'Value', type: 'text', placeholder: 'Enter value to match' },
+    { key: 'description', label: 'Description', type: 'text', placeholder: 'e.g., If status equals "qualified"' },
   ],
 };
 
@@ -117,12 +140,16 @@ export default function NodeConfigPanel({
   }
 
   const nodeData = selectedNode.data;
-  const configOptions =
-    nodeData.type === 'action'
-      ? ACTION_CONFIGS[nodeData.label] || []
-      : nodeData.type === 'condition'
-      ? CONDITION_CONFIGS[nodeData.label] || []
-      : [];
+
+  // Get appropriate config based on node type
+  let configOptions: any[] = [];
+  if (nodeData.type === 'trigger') {
+    configOptions = TRIGGER_CONFIGS[nodeData.label] || [];
+  } else if (nodeData.type === 'action') {
+    configOptions = ACTION_CONFIGS[nodeData.label] || [];
+  } else if (nodeData.type === 'condition') {
+    configOptions = CONDITION_CONFIGS[nodeData.label] || [];
+  }
 
   return (
     <div

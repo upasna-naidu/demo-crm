@@ -93,22 +93,62 @@ export default function AutomationBuilderPage() {
   );
 
   const handleAddNode = useCallback(
-    (nodeType: 'trigger' | 'action' | 'condition' | 'delay') => {
+    (nodeType: 'trigger' | 'action' | 'condition' | 'delay', nodeLabel?: string) => {
       const id = `${nodeType}_${Date.now()}`;
+
+      // Default labels based on node type
+      let defaultLabel = nodeLabel || '';
+      if (!defaultLabel) {
+        if (nodeType === 'trigger') defaultLabel = 'Lead Created';
+        else if (nodeType === 'action') defaultLabel = 'Assign Lead';
+        else if (nodeType === 'condition') defaultLabel = 'Score Check';
+        else if (nodeType === 'delay') defaultLabel = 'Delay';
+      }
+
       const newNode: Node = {
         id,
         type: nodeType,
-        position: { x: Math.random() * 300, y: Math.random() * 300 },
+        position: { x: Math.random() * 300 + 100, y: Math.random() * 300 + 100 },
         data: {
-          label: nodeType === 'trigger' ? 'Lead Created' : `New ${nodeType}`,
+          label: defaultLabel,
           type: nodeType,
-          config: {},
+          config: getDefaultConfig(nodeType, defaultLabel),
         },
       };
       setNodes((nds) => [...nds, newNode]);
     },
     [setNodes]
   );
+
+  // Get default config for each node type
+  const getDefaultConfig = (nodeType: string, label: string) => {
+    switch (label) {
+      case 'Lead Created':
+        return { trigger: 'lead_created', conditions: [] };
+      case 'Lead Updated':
+        return { trigger: 'lead_updated', conditions: [] };
+      case 'Deal Moved':
+        return { trigger: 'deal_moved', conditions: [] };
+      case 'Assign Lead':
+        return { method: 'round-robin', filter: 'all' };
+      case 'Send Email':
+        return { template: 'welcome', recipient: 'lead_email' };
+      case 'Send SMS':
+        return { message: '', phoneField: 'phone' };
+      case 'Create Task':
+        return { title: '', priority: 'medium', days: 3 };
+      case 'Score Check':
+        return { operator: '>', value: 50, condition_type: 'score' };
+      case 'Source Match':
+        return { source: 'website', condition_type: 'source' };
+      case 'Field Equals':
+        return { field: 'status', value: '', condition_type: 'field' };
+      case 'Delay':
+        return { delay: 1, unit: 'days' };
+      default:
+        return {};
+    }
+  };
 
   const handleNodeSelect = useCallback(
     (nodeId: string) => {

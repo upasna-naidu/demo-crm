@@ -1,5 +1,5 @@
 interface NodePaletteProps {
-  onAddNode: (type: 'trigger' | 'action' | 'condition' | 'delay') => void;
+  onAddNode: (type: 'trigger' | 'action' | 'condition' | 'delay', label?: string) => void;
 }
 
 const NODE_CATEGORIES = [
@@ -87,7 +87,8 @@ export default function NodePalette({ onAddNode }: NodePaletteProps) {
             {category.nodes.map((node) => (
               <button
                 key={`${node.type}_${node.label}`}
-                onClick={() => onAddNode(node.type)}
+                onClick={() => onAddNode(node.type, node.label)}
+                title={node.label}
                 style={{
                   padding: '8px 12px',
                   backgroundColor: category.color,
