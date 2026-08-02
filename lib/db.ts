@@ -62,6 +62,58 @@ async function initializeTables(database: any) {
     `CREATE TABLE IF NOT EXISTS "Ticket" (id TEXT PRIMARY KEY, "ticketId" TEXT, subject TEXT, status TEXT, priority TEXT, "createdAt" DATETIME DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS "WorkflowRule" (id TEXT PRIMARY KEY, name TEXT, enabled INTEGER DEFAULT 1)`,
     `CREATE TABLE IF NOT EXISTS "LeadQualityMetric" (id TEXT PRIMARY KEY, "leadId" TEXT, score INTEGER, "checkDate" DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS "Automation" (
+      id TEXT PRIMARY KEY,
+      "companyId" TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      enabled INTEGER DEFAULT 1,
+      "createdBy" TEXT,
+      "createdAt" DATETIME DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS "AutomationNode" (
+      id TEXT PRIMARY KEY,
+      "automationId" TEXT NOT NULL,
+      type TEXT NOT NULL,
+      label TEXT,
+      position TEXT,
+      config TEXT,
+      "createdAt" DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("automationId") REFERENCES "Automation"(id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS "AutomationEdge" (
+      id TEXT PRIMARY KEY,
+      "automationId" TEXT NOT NULL,
+      "fromNodeId" TEXT NOT NULL,
+      "toNodeId" TEXT NOT NULL,
+      label TEXT,
+      "createdAt" DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("automationId") REFERENCES "Automation"(id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS "AutomationExecution" (
+      id TEXT PRIMARY KEY,
+      "automationId" TEXT NOT NULL,
+      "triggeredBy" TEXT,
+      "triggeredValue" TEXT,
+      status TEXT DEFAULT 'running',
+      "startedAt" DATETIME DEFAULT CURRENT_TIMESTAMP,
+      "completedAt" DATETIME,
+      result TEXT,
+      FOREIGN KEY ("automationId") REFERENCES "Automation"(id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS "AutomationExecutionLog" (
+      id TEXT PRIMARY KEY,
+      "executionId" TEXT NOT NULL,
+      "nodeId" TEXT NOT NULL,
+      status TEXT,
+      input TEXT,
+      output TEXT,
+      "executedAt" DATETIME DEFAULT CURRENT_TIMESTAMP,
+      "errorMessage" TEXT,
+      FOREIGN KEY ("executionId") REFERENCES "AutomationExecution"(id),
+      FOREIGN KEY ("nodeId") REFERENCES "AutomationNode"(id)
+    )`,
   ];
 
   return new Promise<void>((resolve) => {

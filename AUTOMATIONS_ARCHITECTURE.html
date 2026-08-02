@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automations Engine - Architecture</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; color: #fff; margin-bottom: 10px; font-size: 2.2em; }
+        .subtitle { text-align: center; color: #888; margin-bottom: 40px; font-size: 1em; }
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+        h2 { color: #4a9eff; margin-bottom: 20px; font-size: 1.6em; border-bottom: 2px solid rgba(74, 158, 255, 0.3); padding-bottom: 10px; }
+        .diagram {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(74, 158, 255, 0.2);
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            line-height: 1.7;
+            font-size: 0.92em;
+            color: #d0d0d0;
+        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 20px 0; }
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .card h3 { color: #4a9eff; margin-bottom: 12px; }
+        .card p, .card ul { color: #b0b0b0; font-size: 0.95em; }
+        .card ul { margin-left: 20px; }
+        .card li { margin: 6px 0; }
+        .highlight { background: rgba(74, 158, 255, 0.2); border-left: 4px solid #4a9eff; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .flow { background: rgba(78, 205, 196, 0.1); border-left: 4px solid #4ecdc4; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .warning { background: rgba(255, 107, 107, 0.1); border-left: 4px solid #ff6b6b; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        code { background: rgba(0, 0, 0, 0.4); padding: 2px 6px; border-radius: 3px; color: #a8e6e1; font-size: 0.9em; }
+        .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; margin-right: 8px; }
+        .status.done { background: rgba(76, 175, 80, 0.3); color: #4caf50; }
+        .status.todo { background: rgba(255, 193, 7, 0.3); color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚙️ Automations Engine - Architecture</h1>
+        <p class="subtitle">Complete system design for drag-and-drop automation workflows</p>
+
+        <!-- Current State -->
+        <div class="section">
+            <h2>Where We Are Right Now</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>✅ What's Built</h3>
+                    <ul>
+                        <li>Full CRM MVP</li>
+                        <li>50+ API endpoints</li>
+                        <li>13+ UI pages</li>
+                        <li>Multi-tenant support</li>
+                        <li>Live on Vercel</li>
+                        <li>All routes working</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🚀 What's Next</h3>
+                    <ul>
+                        <li>Automations Hub (new sidebar)</li>
+                        <li>Drag-drop builder</li>
+                        <li>5 new DB tables</li>
+                        <li>Execution engine</li>
+                        <li>Action handlers</li>
+                        <li>Trigger listeners</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>📍 Current URL</h3>
+                    <p><code>demo-crm-eight-drab.vercel.app</code></p>
+                    <p style="margin-top: 10px; color: #888; font-size: 0.9em;">All routes: 200 OK ✓</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Architecture -->
+        <div class="section">
+            <h2>System Architecture Overview</h2>
+            <div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          AUTOMATIONS ENGINE                             │
+│                         (New Hub in Sidebar)                            │
+└─────────────────────────────────────────────────────────────────────────┘
+
+                              USER INTERFACE
+                                    ↓
+                    ┌─────────────────────────────────┐
+                    │   Automations Hub               │
+                    │  • Create automation            │
+                    │  • Drag-drop builder            │
+                    │  • Node palette (left)          │
+                    │  • Canvas (center)              │
+                    │  • Config panel (right)         │
+                    │  • View executions              │
+                    └─────────────────────────────────┘
+                            ↓         ↑
+                    Save / Load / Execute
+                            ↓         ↑
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          API LAYER                                      │
+│  POST   /api/automations               Create automation                │
+│  GET    /api/automations               List all automations             │
+│  PUT    /api/automations/[id]          Update automation                │
+│  DELETE /api/automations/[id]          Delete automation                │
+│  POST   /api/automations/[id]/nodes    Add node                         │
+│  POST   /api/automations/[id]/edges    Connect nodes                    │
+│  POST   /api/automations/[id]/execute  Run automation                   │
+│  GET    /api/automations/[id]/logs     View execution history           │
+└─────────────────────────────────────────────────────────────────────────┘
+                            ↓         ↑
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   AUTOMATION EXECUTION ENGINE                           │
+│                                                                          │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────────┐   │
+│  │ Trigger Listener │  │ Node Executor    │  │ Action Handler     │   │
+│  │                  │  │                  │  │                    │   │
+│  │ Watches for:     │  │ • Load nodes     │  │ • Assign lead      │   │
+│  │ • Lead created   │  │ • Check type     │  │ • Send email       │   │
+│  │ • Lead updated   │  │ • Execute action │  │ • Send SMS         │   │
+│  │ • Deal moved     │  │ • Evaluate cond. │  │ • Create task      │   │
+│  │ • Scheduled time │  │ • Branch logic   │  │ • Update field     │   │
+│  │ • Manual trigger │  │ • Log results    │  │ • Create deal      │   │
+│  └──────────────────┘  └──────────────────┘  └────────────────────┘   │
+│                                                                          │
+│  ┌──────────────────┐  ┌──────────────────┐                            │
+│  │ Condition Engine │  │ Event Logger     │                            │
+│  │                  │  │                  │                            │
+│  │ Evaluates:       │  │ • Track runs     │                            │
+│  │ • Score > X?     │  │ • Log each step  │                            │
+│  │ • Source = ?     │  │ • Store results  │                            │
+│  │ • Field = ?      │  │ • Audit trail    │                            │
+│  └──────────────────┘  └──────────────────┘                            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+                            ↓         ↑
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        DATABASE LAYER                                   │
+│                                                                          │
+│  NEW TABLES:                                                            │
+│  • Automation        (automation definition)                            │
+│  • AutomationNode    (individual steps)                                 │
+│  • AutomationEdge    (connections/branches)                             │
+│  • AutomationExecution (run history)                                    │
+│  • AutomationExecutionLog (step-by-step logs)                           │
+│                                                                          │
+│  EXISTING TABLES:                                                       │
+│  • Lead, Deal, Contact, Company, EmailTemplate, Task, User, etc.      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+                            ↓
+                ┌──────────────────────────┐
+                │  ACTION EXECUTION        │
+                │  Real changes happen:    │
+                │  • Leads assigned        │
+                │  • Emails sent           │
+                │  • Tasks created         │
+                │  • Fields updated        │
+                └──────────────────────────┘
+            </div>
+        </div>
+
+        <!-- Automation Flow -->
+        <div class="section">
+            <h2>How an Automation Runs - Step by Step</h2>
+            <div class="diagram">
+SCENARIO: New lead is created in your CRM
+═══════════════════════════════════════════
+
+STEP 1: TRIGGER FIRES
+├─ Lead created event detected
+├─ Lead data captured: {id, name, score, source, company, email}
+└─ System queries for automations with "Lead Created" trigger
+
+STEP 2: FIND MATCHING AUTOMATIONS
+├─ Find all ENABLED automations for this company
+├─ Filter by trigger type = "Lead Created"
+└─ Found: 2 automations
+   ├─ "Route high-quality leads"
+   └─ "Send welcome email"
+
+STEP 3: EXECUTE FIRST AUTOMATION
+├─ Automation ID: auto_12345
+├─ Create AutomationExecution record (status: running)
+├─ Load all nodes for this automation
+└─ Load all edges (connections)
+
+STEP 4: START FROM FIRST NODE
+├─ Node: "Lead Created" (trigger)
+├─ Status: confirmed ✓
+└─ Move to next connected node
+
+STEP 5: PROCESS ACTION NODE
+├─ Node: "Update Field"
+├─ Config: {field: "status", value: "new_lead"}
+├─ Execute: Update lead.status = "new_lead"
+├─ Log result: {status: "completed", timestamp: now}
+└─ Move to next node
+
+STEP 6: PROCESS CONDITION NODE
+├─ Node: "Condition: Score > 50?"
+├─ Evaluate: Is lead.score (72) > 50?
+├─ Result: YES ✓
+└─ Branch to YES path → "Assign to Sales Exec"
+
+STEP 7: EXECUTE ACTION NODE (Assign)
+├─ Node: "Assign to Sales Exec"
+├─ Config: {method: "round-robin", filter: "active_users"}
+├─ Get next user in rotation: Alex (sales_exec_001)
+├─ Execute: Assign lead to Alex
+├─ Create AutomationExecutionLog: {action: "assign", assigned_to: "Alex"}
+└─ Move to next node
+
+STEP 8: EXECUTE ACTION NODE (Send Email)
+├─ Node: "Send Email"
+├─ Config: {template_id: "welcome_email", recipient: lead.email}
+├─ Load template: "Welcome to our platform!"
+├─ Send email to lead@company.com
+├─ Log result: {email_sent: true, message_id: "msg_789"}
+└─ Move to next node
+
+STEP 9: PROCESS UTILITY NODE (Delay)
+├─ Node: "Delay"
+├─ Config: {duration: 5, unit: "days"}
+├─ Schedule resume in 5 days
+├─ Pause execution (wait in queue)
+└─ When 5 days passed → Resume at next node
+
+STEP 10: COMPLETE AUTOMATION
+├─ Automation finished all nodes
+├─ Mark AutomationExecution as "completed"
+├─ Record final timestamp
+└─ Store complete result:
+   ├─ Trigger: Lead created (id: lead_999)
+   ├─ Actions: 4 executed successfully
+   ├─ Status assignments: 1 (Alex)
+   ├─ Emails sent: 1
+   ├─ Duration: 0.5 seconds (+ 5 day delay)
+   └─ Result: SUCCESS ✓
+
+STEP 11: POST-EXECUTION
+├─ Update dashboard metrics
+├─ Archive execution log
+├─ Alert admins if any errors
+└─ Ready for next automation run
+            </div>
+        </div>
+
+        <!-- Node Types -->
+        <div class="section">
+            <h2>Automation Node Types</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>🔴 TRIGGERS (Start Point)</h3>
+                    <ul>
+                        <li>Lead Created</li>
+                        <li>Lead Score Changed</li>
+                        <li>Deal Moved to Stage</li>
+                        <li>Contact Updated</li>
+                        <li>Ticket Created</li>
+                        <li>Scheduled (Time-based)</li>
+                        <li>Manual (Admin Click)</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🟢 ACTIONS (Do Something)</h3>
+                    <ul>
+                        <li>Assign Lead/Deal</li>
+                        <li>Send Email</li>
+                        <li>Send SMS</li>
+                        <li>Create Task</li>
+                        <li>Update Field</li>
+                        <li>Change Status</li>
+                        <li>Create Deal</li>
+                        <li>Notify Team</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🟡 CONDITIONS (Decision)</h3>
+                    <ul>
+                        <li>Score Check (> &lt; =)</li>
+                        <li>Source Match</li>
+                        <li>Field Equals</li>
+                        <li>Score Range</li>
+                        <li>If/Then/Else</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🔵 UTILITIES (Advanced)</h3>
+                    <ul>
+                        <li>Delay (Wait X days)</li>
+                        <li>Wait for Event</li>
+                        <li>Branch (Parallel)</li>
+                        <li>Merge</li>
+                        <li>Loop</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Schema -->
+        <div class="section">
+            <h2>Database Schema - 5 New Tables</h2>
+            <div class="highlight">
+                <strong>Table 1: Automation</strong><br><br>
+                <code>id</code> (PRIMARY KEY)<br>
+                <code>companyId</code> (Foreign Key) - Multi-tenant<br>
+                <code>name</code> - Display name<br>
+                <code>description</code> - What it does<br>
+                <code>enabled</code> - Boolean (active/inactive)<br>
+                <code>createdBy</code> - Admin who created it<br>
+                <code>createdAt, updatedAt</code> - Timestamps<br>
+            </div>
+
+            <div class="highlight">
+                <strong>Table 2: AutomationNode</strong><br><br>
+                <code>id</code> (PRIMARY KEY)<br>
+                <code>automationId</code> (Foreign Key)<br>
+                <code>type</code> - "trigger", "action", "condition", "delay", "branch"<br>
+                <code>label</code> - Display name<br>
+                <code>position</code> - {x: 100, y: 50} for canvas<br>
+                <code>config</code> - JSON with node-specific settings<br>
+            </div>
+
+            <div class="highlight">
+                <strong>Table 3: AutomationEdge</strong><br><br>
+                <code>id</code> (PRIMARY KEY)<br>
+                <code>automationId</code> (Foreign Key)<br>
+                <code>fromNodeId</code> (Foreign Key)<br>
+                <code>toNodeId</code> (Foreign Key)<br>
+                <code>label</code> - "yes", "no", "success", "error"<br>
+            </div>
+
+            <div class="highlight">
+                <strong>Table 4: AutomationExecution</strong><br><br>
+                <code>id</code> (PRIMARY KEY)<br>
+                <code>automationId</code> (Foreign Key)<br>
+                <code>triggeredBy</code> - "lead_id", "deal_id", "manual"<br>
+                <code>triggeredValue</code> - Actual ID (e.g., "lead_12345")<br>
+                <code>status</code> - "running", "completed", "failed", "paused"<br>
+                <code>startedAt, completedAt</code> - Timestamps<br>
+                <code>result</code> - JSON with execution results<br>
+            </div>
+
+            <div class="highlight">
+                <strong>Table 5: AutomationExecutionLog</strong><br><br>
+                <code>id</code> (PRIMARY KEY)<br>
+                <code>executionId</code> (Foreign Key)<br>
+                <code>nodeId</code> (Foreign Key)<br>
+                <code>status</code> - "completed", "failed", "skipped"<br>
+                <code>input</code> - What data went in<br>
+                <code>output</code> - What came out<br>
+                <code>executedAt</code> - When it ran<br>
+                <code>errorMessage</code> - If it failed<br>
+            </div>
+        </div>
+
+        <!-- UI Layout -->
+        <div class="section">
+            <h2>Automations Hub - UI Layout</h2>
+            <div class="diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│ Automations > Create New              [← Back] [Save] [Test] [Activate] │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌───────────────────┐                                              │
+│  │ NODE PALETTE      │       CANVAS (Drag & Drop)                  │
+│  │   (Left Sidebar)  │    ┌──────────────────────────────┐          │
+│  ├───────────────────┤    │                              │          │
+│  │ 🔴 TRIGGERS      │    │    ┌────────────────────┐   │          │
+│  │  └─ Lead created  │    │    │  Lead Created     │   │          │
+│  │  └─ Lead updated  │    │    │  [Trigger]        │   │          │
+│  │  └─ Deal moved    │    │    └────────┬───────────┘   │          │
+│  │  └─ Scheduled     │    │             │                │          │
+│  │                   │    │      ┌──────▼─────────┐     │          │
+│  │ 🟢 ACTIONS       │    │      │ Score > 50?    │     │          │
+│  │  └─ Assign        │    │      │ [Condition]    │     │          │
+│  │  └─ Email         │    │      └──┬────────┬───┘     │          │
+│  │  └─ SMS           │    │         │ YES   NO │       │          │
+│  │  └─ Task          │    │    ┌────▼───┐  ┌─▼─────┐  │          │
+│  │  └─ Update        │    │    │ Assign │  │ Email │  │          │
+│  │  └─ Create Deal   │    │    │ [Act]  │  │ [Act] │  │          │
+│  │                   │    │    └────────┘  └───────┘  │          │
+│  │ 🟡 CONDITIONS    │    │                            │          │
+│  │  └─ Score        │    │  [Zoom] [Fit] [Clear]      │          │
+│  │  └─ Source       │    └──────────────────────────────┘          │
+│  │  └─ Field        │                                              │
+│  │                   │    ┌──────────────────────────────┐          │
+│  │ 🔵 UTILITIES      │    │  NODE CONFIGURATION          │          │
+│  │  └─ Delay         │    │  (Right Sidebar)             │          │
+│  │  └─ Wait          │    │                              │          │
+│  │  └─ Branch        │    │  Node Type: Assign           │          │
+│  │                   │    │  Label: Assign to Sales Exec │          │
+│  └───────────────────┘    │                              │          │
+│                           │  Method: Round Robin         │          │
+│                           │  Filter: Active users only   │          │
+│                           │                              │          │
+│                           │  [Update Config]             │          │
+│                           │  [Delete Node]               │          │
+│                           └──────────────────────────────┘          │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+TABS:
+├─ Builder (drag-drop canvas)
+├─ Executions (view runs)
+├─ Logs (detailed logs)
+└─ Settings (automation config)
+            </div>
+        </div>
+
+        <!-- Implementation Plan -->
+        <div class="section">
+            <h2>Implementation Plan - 4 Weeks</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Week 1: Foundation</h3>
+                    <span class="status todo">In Progress</span>
+                    <ul>
+                        <li>Create 5 new DB tables</li>
+                        <li>Build CRUD APIs (8)</li>
+                        <li>Create canvas UI component</li>
+                        <li>Implement drag-drop</li>
+                        <li>Build node palette</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Week 2: Core Engine</h3>
+                    <span class="status todo">Next</span>
+                    <ul>
+                        <li>Trigger listener system</li>
+                        <li>Node executor</li>
+                        <li>Action handlers (8+)</li>
+                        <li>Condition evaluator</li>
+                        <li>Logging system</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Week 3: Advanced</h3>
+                    <span class="status todo">Next</span>
+                    <ul>
+                        <li>Delay/Wait nodes</li>
+                        <li>Branching logic</li>
+                        <li>Testing mode</li>
+                        <li>Execution monitor</li>
+                        <li>Error handling</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Week 4: Polish</h3>
+                    <span class="status todo">Next</span>
+                    <ul>
+                        <li>Automation templates</li>
+                        <li>Analytics dashboard</li>
+                        <li>Performance optimization</li>
+                        <li>Documentation</li>
+                        <li>Testing & bugs</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real Example -->
+        <div class="section">
+            <h2>Real Example: Lead Routing Automation</h2>
+            <div class="diagram">
+AUTOMATION: Route High-Quality Leads to Sales Exec
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+         [Lead Created] (Trigger)
+                │
+                ↓
+        [Update Field]
+     Set status = "new"
+                │
+                ↓
+      [Condition: Score > 50?]
+           │           │
+          YES          NO
+           │           │
+           ↓           ↓
+    [Assign to Sales]  [Email Nurture]
+       [Action]        [Action]
+       │                │
+       ↓                ↓
+  [Send Email]     [Delay 5 days]
+   [Action]         [Utility]
+       │                │
+       ↓                ↓
+  [Create Task]   [Send Email]
+   [Action]       [Action]
+       │                │
+       └────────┬───────┘
+                ↓
+           [Complete]
+
+WHAT HAPPENS:
+━━━━━━━━━━━━━
+✓ Lead created event fires
+✓ Status updated to "new"
+✓ Check: Is score > 50? YES
+✓ Assign to next sales exec (round-robin)
+✓ Send welcome email template
+✓ Create follow-up task
+✓ All in seconds, automatically
+✓ Full audit trail saved
+            </div>
+        </div>
+
+        <!-- Action Items -->
+        <div class="section">
+            <h2>Next Steps</h2>
+            <div class="flow">
+                <strong>Ready to Build:</strong><br><br>
+                1️⃣ Add "Automations" to sidebar (after Analytics)<br>
+                2️⃣ Create Automations Hub page<br>
+                3️⃣ Create 5 new database tables<br>
+                4️⃣ Build 8+ API endpoints<br>
+                5️⃣ Build canvas UI component<br>
+                6️⃣ Implement drag-drop functionality<br>
+                7️⃣ Build execution engine<br>
+                8️⃣ Deploy to Vercel<br>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

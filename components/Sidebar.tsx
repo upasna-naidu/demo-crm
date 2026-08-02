@@ -23,10 +23,9 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     { label: 'Operations', href: '/operations' },
     { label: 'Service', href: '/service' },
     { label: 'Analytics', href: '/analytics' },
+    { label: 'Automations', href: '/automations' },
     { label: 'Content', href: '/content' },
     { label: 'Commerce', href: '/commerce' },
-    { label: 'Automation', href: '/automation' },
-    { label: 'Reports', href: '/reports' },
     { label: 'Development', href: '/development' },
   ];
 
