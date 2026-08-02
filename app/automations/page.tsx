@@ -65,22 +65,40 @@ export default function AutomationsPage() {
           <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>Automations</h1>
           <p style={{ color: '#6b7280' }}>Create and manage automated workflows for your business</p>
         </div>
-        <Link
-          href="/automations/builder"
-          style={{
-            backgroundColor: 'var(--primary)',
-            color: 'white',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontWeight: '500',
-            transition: 'opacity 0.2s',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-        >
-          + Create Automation
-        </Link>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Link
+            href="/automations/templates"
+            style={{
+              backgroundColor: '#e5e7eb',
+              color: '#374151',
+              padding: '10px 20px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontWeight: '500',
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+          >
+            📋 Templates
+          </Link>
+          <Link
+            href="/automations/builder"
+            style={{
+              backgroundColor: 'var(--primary)',
+              color: 'white',
+              padding: '10px 20px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontWeight: '500',
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+          >
+            + Create
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}

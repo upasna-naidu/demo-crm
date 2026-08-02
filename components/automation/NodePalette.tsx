@@ -27,6 +27,13 @@ const NODE_CATEGORIES = [
       { type: 'action' as const, label: 'Change Status' },
       { type: 'action' as const, label: 'Create Deal' },
       { type: 'action' as const, label: 'Notify Team' },
+      { type: 'action' as const, label: 'Webhook Call' },
+      { type: 'action' as const, label: 'Slack Message' },
+      { type: 'action' as const, label: 'Record Activity' },
+      { type: 'action' as const, label: 'Add to Campaign' },
+      { type: 'action' as const, label: 'Schedule Call' },
+      { type: 'action' as const, label: 'Update CRM Field' },
+      { type: 'action' as const, label: 'Create Note' },
     ],
   },
   {

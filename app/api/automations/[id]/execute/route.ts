@@ -192,27 +192,18 @@ async function executeNode(
 }
 
 async function executeAction(node: any, config: any, context: any) {
-  const actionType = node.label || config.actionType;
+  try {
+    const { actionHandlers } = await import('@/lib/automationActions');
+    const actionLabel = node.label || config.actionType;
+    const handler = actionHandlers[actionLabel];
 
-  switch (actionType) {
-    case 'Assign to User':
-      return { status: 'assigned', userId: config.userId || 'random' };
+    if (handler) {
+      return await handler(config, context);
+    }
 
-    case 'Send Email':
-      return { status: 'email_sent', templateId: config.templateId };
-
-    case 'Create Task':
-      return { status: 'task_created', taskId: `task_${Date.now()}` };
-
-    case 'Update Field':
-      return {
-        status: 'field_updated',
-        field: config.field,
-        value: config.value,
-      };
-
-    default:
-      return { status: 'action_executed' };
+    return { success: true, message: `Action executed: ${actionLabel}`, status: 'executed' };
+  } catch (error) {
+    return { success: false, message: 'Action execution failed', error: String(error) };
   }
 }
 

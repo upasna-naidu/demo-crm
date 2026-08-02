@@ -9,35 +9,68 @@ interface NodeConfigPanelProps {
 
 const ACTION_CONFIGS: Record<string, any[]> = {
   'Assign Lead': [
-    { key: 'method', label: 'Assignment Method', type: 'select', options: ['Round Robin', 'Highest Score', 'Specific User'] },
-    { key: 'filter', label: 'Filter by Department', type: 'select', options: ['All', 'Sales', 'Marketing'] },
+    { key: 'method', label: 'Assignment Method', type: 'select', options: ['round-robin', 'highest-score', 'specific-user'] },
+    { key: 'filter', label: 'Filter by Department', type: 'select', options: ['all', 'sales', 'marketing', 'support'] },
   ],
   'Send Email': [
-    { key: 'template', label: 'Email Template', type: 'select', options: ['Welcome', 'Nurture', 'Follow-up', 'Reminder'] },
-    { key: 'recipient', label: 'Send to', type: 'select', options: ['Lead Email', 'Owner Email'] },
+    { key: 'template', label: 'Email Template', type: 'select', options: ['welcome', 'nurture', 'follow-up', 'reminder', 'offer'] },
+    { key: 'recipient', label: 'Send to', type: 'select', options: ['lead_email', 'owner_email', 'both'] },
+  ],
+  'Send SMS': [
+    { key: 'message', label: 'Message', type: 'textarea', placeholder: 'SMS message text' },
+    { key: 'phoneField', label: 'Phone Field', type: 'select', options: ['phone', 'mobile', 'other'] },
   ],
   'Create Task': [
-    { key: 'title', label: 'Task Title', type: 'text', placeholder: 'Enter task title' },
-    { key: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High'] },
+    { key: 'title', label: 'Task Title', type: 'text', placeholder: 'Follow-up call' },
+    { key: 'priority', label: 'Priority', type: 'select', options: ['low', 'medium', 'high'] },
     { key: 'days', label: 'Due in (days)', type: 'number', placeholder: '3' },
   ],
   'Update Field': [
-    { key: 'field', label: 'Field Name', type: 'select', options: ['status', 'score', 'source', 'owner'] },
+    { key: 'field', label: 'Field Name', type: 'select', options: ['status', 'score', 'source', 'owner', 'company'] },
     { key: 'value', label: 'New Value', type: 'text', placeholder: 'Enter value' },
   ],
   'Change Status': [
-    { key: 'status', label: 'New Status', type: 'select', options: ['new', 'qualified', 'contacted', 'closed'] },
-  ],
-  'Send SMS': [
-    { key: 'message', label: 'Message', type: 'textarea', placeholder: 'Enter SMS message' },
+    { key: 'status', label: 'New Status', type: 'select', options: ['new', 'qualified', 'contacted', 'negotiating', 'closed'] },
   ],
   'Create Deal': [
     { key: 'dealTitle', label: 'Deal Title', type: 'text', placeholder: 'Deal from {{lead_name}}' },
     { key: 'value', label: 'Deal Value', type: 'number', placeholder: '0' },
   ],
   'Notify Team': [
-    { key: 'message', label: 'Notification Message', type: 'textarea', placeholder: 'Enter notification message' },
-    { key: 'recipients', label: 'Recipients', type: 'select', options: ['Manager', 'Team Lead', 'All'] },
+    { key: 'message', label: 'Notification Message', type: 'textarea', placeholder: 'Enter notification' },
+    { key: 'recipients', label: 'Recipients', type: 'select', options: ['manager', 'team_lead', 'all', 'sales_team'] },
+  ],
+  'Webhook Call': [
+    { key: 'webhookUrl', label: 'Webhook URL', type: 'text', placeholder: 'https://example.com/webhook' },
+    { key: 'method', label: 'HTTP Method', type: 'select', options: ['POST', 'PUT', 'GET'] },
+    { key: 'payload', label: 'Payload (JSON)', type: 'textarea', placeholder: '{"key": "value"}' },
+  ],
+  'Slack Message': [
+    { key: 'slackWebhook', label: 'Slack Webhook URL', type: 'text', placeholder: 'https://hooks.slack.com/...' },
+    { key: 'channel', label: 'Channel', type: 'text', placeholder: '#notifications' },
+    { key: 'message', label: 'Message', type: 'textarea', placeholder: 'Message text' },
+  ],
+  'Record Activity': [
+    { key: 'activityType', label: 'Activity Type', type: 'select', options: ['call', 'email', 'meeting', 'note', 'task'] },
+    { key: 'notes', label: 'Notes', type: 'textarea', placeholder: 'Activity details' },
+  ],
+  'Add to Campaign': [
+    { key: 'campaignId', label: 'Campaign', type: 'select', options: ['summer_campaign', 'product_launch', 'seasonal'] },
+    { key: 'campaignName', label: 'Campaign Name', type: 'text', placeholder: 'Campaign name' },
+  ],
+  'Schedule Call': [
+    { key: 'callType', label: 'Call Type', type: 'select', options: ['inbound', 'outbound', 'video'] },
+    { key: 'duration', label: 'Duration (mins)', type: 'number', placeholder: '15' },
+    { key: 'daysFromNow', label: 'Schedule for (days)', type: 'number', placeholder: '1' },
+  ],
+  'Update CRM Field': [
+    { key: 'crmObject', label: 'CRM Object', type: 'select', options: ['lead', 'contact', 'deal', 'account'] },
+    { key: 'crmField', label: 'Field Name', type: 'text', placeholder: 'custom_field_1' },
+    { key: 'crmValue', label: 'Field Value', type: 'text', placeholder: 'Enter value' },
+  ],
+  'Create Note': [
+    { key: 'noteType', label: 'Note Type', type: 'select', options: ['general', 'follow_up', 'internal', 'customer'] },
+    { key: 'noteContent', label: 'Note Content', type: 'textarea', placeholder: 'Enter note text' },
   ],
 };
 
