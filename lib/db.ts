@@ -1,6 +1,7 @@
 let db: any = null;
-const usePostgres = !!process.env.DATABASE_URL;
 const isProduction = process.env.NODE_ENV === 'production';
+const databaseUrl = process.env.DATABASE_URL || '';
+const usePostgres = databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://');
 
 if (usePostgres) {
   console.log('Using PostgreSQL database');
@@ -46,8 +47,24 @@ async function getDB() {
 
 async function initializeTables(database: any) {
   const tables = [
-    `CREATE TABLE IF NOT EXISTS "User" (id TEXT PRIMARY KEY, name TEXT NOT NULL)`,
-    `CREATE TABLE IF NOT EXISTS "Company" (id TEXT PRIMARY KEY, name TEXT NOT NULL, "createdAt" DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+    // Role-based access control tables
+    `CREATE TABLE IF NOT EXISTS "Role" (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, description TEXT)`,
+    `CREATE TABLE IF NOT EXISTS "Permission" (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, description TEXT)`,
+    `CREATE TABLE IF NOT EXISTS "RolePermission" (id TEXT PRIMARY KEY, "roleId" TEXT NOT NULL, "permissionId" TEXT NOT NULL, UNIQUE("roleId", "permissionId"))`,
+    `CREATE TABLE IF NOT EXISTS "CompanyUser" (id TEXT PRIMARY KEY, "userId" TEXT NOT NULL, "companyId" TEXT NOT NULL, "roleId" TEXT NOT NULL, "isAdmin" INTEGER DEFAULT 0, UNIQUE("userId", "companyId"))`,
+    `CREATE TABLE IF NOT EXISTS "UserTeam" (id TEXT PRIMARY KEY, "managerId" TEXT NOT NULL, "memberId" TEXT NOT NULL, "companyId" TEXT NOT NULL, UNIQUE("managerId", "memberId", "companyId"))`,
+
+    // Updated User table with roleId
+    `CREATE TABLE IF NOT EXISTS "User" (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE,
+      "roleId" TEXT,
+      "managerId" TEXT,
+      "createdAt" DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS "Company" (id TEXT PRIMARY KEY, name TEXT NOT NULL, "adminId" TEXT, "createdAt" DATETIME DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS "Lead" (
       id TEXT PRIMARY KEY, "leadId" TEXT, name TEXT, email TEXT, phone TEXT, company TEXT,
       title TEXT, source TEXT, "stageId" TEXT, "ownerId" TEXT, status TEXT DEFAULT 'new',
