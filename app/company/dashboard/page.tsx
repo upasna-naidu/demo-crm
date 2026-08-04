@@ -28,12 +28,34 @@ export default function CompanyDashboardPage() {
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState('');
 
-  // Get company ID from localStorage or URL
+  // Get company ID from localStorage, URL, or first organization
   useEffect(() => {
-    const cid = localStorage.getItem('companyId') || 'default';
-    setCompanyId(cid);
-    fetchTeamMembers(cid);
-    fetchRoles();
+    const initializePage = async () => {
+      let cid = localStorage.getItem('companyId');
+
+      // If no companyId in localStorage, get first organization
+      if (!cid) {
+        try {
+          const response = await fetch('/api/organizations');
+          const data = await response.json();
+          if (data.organizations && data.organizations.length > 0) {
+            cid = data.organizations[0].id;
+            localStorage.setItem('companyId', cid);
+          }
+        } catch (error) {
+          console.error('Error fetching organizations:', error);
+        }
+      }
+
+      if (cid) {
+        setCompanyId(cid);
+        await fetchTeamMembers(cid);
+      }
+
+      fetchRoles();
+    };
+
+    initializePage();
   }, []);
 
   const fetchTeamMembers = async (cid: string) => {
