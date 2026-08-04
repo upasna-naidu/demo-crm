@@ -3,10 +3,10 @@ import { query, run, queryOne } from '@/lib/db';
 // PUT change user role
 export async function PUT(
   request: Request,
-  { params }: { params: { companyId: string; userId: string } }
+  { params }: { params: Promise<{ companyId: string; userId: string }> }
 ) {
   try {
-    const { companyId, userId } = params;
+    const { companyId, userId } = await params;
     const { roleId } = await request.json();
 
     if (!roleId) {
@@ -29,10 +29,10 @@ export async function PUT(
 // DELETE remove user from company
 export async function DELETE(
   request: Request,
-  { params }: { params: { companyId: string; userId: string } }
+  { params }: { params: Promise<{ companyId: string; userId: string }> }
 ) {
   try {
-    const { companyId, userId } = params;
+    const { companyId, userId } = await params;
 
     await run(
       `DELETE FROM "CompanyUser"

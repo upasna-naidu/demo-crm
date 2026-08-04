@@ -5,10 +5,10 @@ import crypto from 'crypto';
 // GET webhook for company
 export async function GET(
   request: Request,
-  { params }: { params: { companyId: string } }
+  { params }: { params: Promise<{ companyId: string }> }
 ) {
   try {
-    const { companyId } = params;
+    const { companyId } = await params;
 
     const webhook = await queryOne(
       `SELECT id, "companyId", url, secret, "isActive", "createdAt", "updatedAt"
@@ -44,10 +44,10 @@ export async function GET(
 // POST create/regenerate webhook
 export async function POST(
   request: Request,
-  { params }: { params: { companyId: string } }
+  { params }: { params: Promise<{ companyId: string }> }
 ) {
   try {
-    const { companyId } = params;
+    const { companyId } = await params;
     const { action } = await request.json();
 
     // Check if webhook exists

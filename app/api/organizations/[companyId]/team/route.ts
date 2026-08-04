@@ -4,10 +4,10 @@ import { v4 as uuidv4 } from 'uuid';
 // GET team members for company
 export async function GET(
   request: Request,
-  { params }: { params: { companyId: string } }
+  { params }: { params: Promise<{ companyId: string }> }
 ) {
   try {
-    const { companyId } = params;
+    const { companyId } = await params;
 
     const teamMembers = await query(
       `SELECT u.id, u.name, u.email, cu."roleId", r.name as roleName, cu."isAdmin"
@@ -29,10 +29,10 @@ export async function GET(
 // POST invite new user to company
 export async function POST(
   request: Request,
-  { params }: { params: { companyId: string } }
+  { params }: { params: Promise<{ companyId: string }> }
 ) {
   try {
-    const { companyId } = params;
+    const { companyId } = await params;
     const { email, name, roleId } = await request.json();
 
     if (!email || !name || !roleId) {
