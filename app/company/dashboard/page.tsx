@@ -312,7 +312,7 @@ export default function CompanyDashboardPage() {
                           <button
                             onClick={() => {
                               setSelectedMember(member.id);
-                              setSelectedRole(member.id);
+                              setSelectedRole(member.roleName);
                             }}
                             style={{
                               padding: '6px 12px',
